@@ -7,6 +7,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/vincehamel81-dot/deckforge/config"
+	"github.com/vincehamel81-dot/deckforge/internal/domain/user"
 	"github.com/vincehamel81-dot/deckforge/internal/infrastructure/persistence"
 	httpserver "github.com/vincehamel81-dot/deckforge/internal/presentation/http"
 )
@@ -35,6 +36,21 @@ func main() {
 	players := persistence.NewPlayerRepo(db)
 	shoes := persistence.NewShoeRepo(db)
 	users := persistence.NewUserRepo(db)
+
+	if cfg.AdminSeedUsername != "" {
+		exists, err := users.ExistsByUsername(cfg.AdminSeedUsername)
+		if err != nil {
+			log.Fatal().Err(err).Msg("failed to check admin seed user")
+		}
+		if !exists {
+			admin := user.New(cfg.AdminSeedUsername)
+			admin.Role = user.RoleAdmin
+			if err := users.Create(admin); err != nil {
+				log.Fatal().Err(err).Msg("failed to create admin seed user")
+			}
+			log.Info().Str("username", cfg.AdminSeedUsername).Msg("admin user seeded")
+		}
+	}
 
 	router := httpserver.NewRouter(cfg, games, players, shoes, users)
 

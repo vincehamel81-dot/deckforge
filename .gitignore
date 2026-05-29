@@ -35,3 +35,6 @@ Thumbs.db
 # IDE — share extensions hint, not personal settings
 .vscode/settings.json
 .vscode/launch.json
+
+# Claude Code local overrides (personal permissions, not shared)
+.claude/settings.local.json
