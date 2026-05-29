@@ -1,0 +1,37 @@
+# Go binaries
+*.exe
+*.exe~
+deckforge
+
+# Go test / coverage
+*.test
+*.out
+coverage.html
+
+# Go build artifacts
+/backend/tmp/
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# Environment (never commit secrets)
+.env
+.env.local
+.env.*.local
+
+# Frontend build
+frontend/dist/
+frontend/node_modules/
+
+# Node
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE — share extensions hint, not personal settings
+.vscode/settings.json
+.vscode/launch.json
