@@ -343,6 +343,94 @@ tension that makes the frontend interesting.
 
 ---
 
+## ADR-013: Phase 1 frontend uses polling, not WebSocket
+
+**Status:** Accepted — deliberately time-boxed  
+**Date:** 2026-05-29
+
+**Context:**  
+The frontend needs to reflect live game state (players joining, cards dealt, shoe count changing).
+Two options: 5-second polling via TanStack Query's `refetchInterval`, or WebSocket push.
+
+**Decision:** Polling in Phase 1.
+
+**Reasoning:**
+- WebSocket requires a hub goroutine, JWT upgrade on the HTTP handshake, fan-out broadcast, and a
+  persistent client connection — that's a full backend subsystem, not a one-day feature.
+- 5-second polling is perfectly acceptable for a demo with 2–4 players on a LAN. The game moves
+  slower than 5 seconds per action.
+- The architecture explicitly plans for WebSocket in Phase 2. The `lib/wsClient.ts` stub is already
+  in the frontend codebase. The upgrade path is clear and non-disruptive to the existing queries.
+
+**Tradeoffs accepted:**
+- Up to 5 seconds of lag between an action on one client and the other client seeing it.
+- Minor unnecessary load from polling even when nothing changes. Acceptable at demo scale.
+
+**Phase 2 upgrade path:** Replace `refetchInterval: 5000` queries with WebSocket event listeners.
+Game state changes broadcast via the hub instantly — zero polling overhead in production.
+
+---
+
+## ADR-014: No game rules engine — DeckForge is infrastructure, not a ruleset
+
+**Status:** Accepted  
+**Date:** 2026-05-29
+
+**Context:**  
+The assignment says "a very basic game in which one or more decks are added to create a game deck...
+along with a group of players getting cards from the game deck." It does not specify poker hand
+evaluation, betting, blackjack strategy, or any win condition beyond "highest total hand value."
+
+**Decision:** No game rules engine. DeckForge implements the card management infrastructure.
+Specific game rules (poker, blackjack, baccarat) are explicitly a layer above this engine.
+
+**Reasoning:**
+- The assignment's own description uses "engine" language — shoe, dealing, shuffling, scoring.
+- The stated win condition (highest numeric sum) maps directly to the leaderboard sort — no special
+  rules logic needed.
+- Adding a poker hand evaluator, betting round, or blind/ante system would be speculative scope
+  expansion that the assignment does not request and that the interview team did not ask for.
+- Clean seam: any game-specific rules can be implemented in a service layer above the engine API
+  without touching a line of DeckForge's code.
+
+**What this means in practice:** The engine deals cards and reports hand values. It does not know
+about "flush," "straight," "blackjack," or "bust." Those interpretations live in a game adapter,
+not in the engine.
+
+---
+
+## ADR-015: Consciously deferred — features not built in Phase 1
+
+**Status:** Accepted  
+**Date:** 2026-05-29
+
+**Context:**  
+The assignment window was 2 days. Many features that would belong in a complete product were
+evaluated and explicitly scheduled for later phases rather than rushed into Phase 1. This ADR
+records what was deferred and why, so the choices are transparent at the interview.
+
+| Feature | Phase | Reason for deferral |
+|---|---|---|
+| Real-time WebSocket events | Phase 2 | Requires hub goroutine, JWT upgrade, full broadcast subsystem. Polling covers Phase 1 needs adequately. |
+| Per-player turn timer (15 s auto-accept) | Phase 2 | Requires WebSocket to fire server-side timeout and push `turn_expired` to clients. Cannot be done purely over HTTP without polling. |
+| In-game chat | Phase 2 | WebSocket dependency. Separate message table + ephemeral channel. |
+| SVG card graphics | Phase 3 | Cards are correctly rendered as "A♥", "K♦", etc. Photorealistic or illustrated SVG assets are a visual polish concern, not an API concern. |
+| Frontend unit/component tests (Vitest) | Phase 4 | Backend invariants are covered by 17 integration tests. Frontend test value is highest on stable components; testing before the UX is finalized creates churn. |
+| Swagger/OpenAPI *(now done in Phase 1)* | ~~Phase 4~~ | Pulled forward because it took < 2 hours and significantly improves reviewer experience. |
+| Docker *(now done in Phase 1)* | ~~Phase 5~~ | Pulled forward for the same reason. |
+| CI/CD pipeline (GitHub Actions → GHCR) | Phase 5 | Would add ~30 minutes of value for the reviewer but zero functional value before submission. |
+| PostgreSQL *(now done in Phase 1)* | ~~Phase 5~~ | Pulled forward; `DB_DRIVER` env var switch took < 1 hour. |
+| Redis pub/sub for horizontal scaling | Phase 6 | Relevant only when running multiple backend instances behind a load balancer. SQLite + single-instance is correct for Phase 1. |
+| OIDC / Azure Entra ID authentication | Phase 6 | JWT with HMAC is structurally identical to JWT with OIDC — same claims, same middleware. The upgrade is one function swap in `auth_middleware.go`. |
+| Rate limiting on API endpoints | Phase 1+ | `@nestjs/throttler` equivalent: `ulule/limiter` or middleware wrapping. Not in the assignment spec. Documented as needed for production. |
+| Spectator role | Post-Phase 2 | Spectators can see game state but not hands. Straightforward RBAC addition once WebSocket is live. |
+
+**Interview answer:**  
+> "I built what the assignment asked for and documented everything else. If you want to know why a
+> specific feature isn't here, look at ADR-015 — I made a conscious call on every one of them."
+
+---
+
 ## Assumptions log
 
 Decisions where the assignment was silent and we applied "principle of least surprise":
