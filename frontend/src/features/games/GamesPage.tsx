@@ -60,14 +60,16 @@ export default function GamesPage() {
       <div style={s.grid}>
         {games?.filter(g => g.status !== 'FINISHED').map(game => (
           <div key={game.id} style={s.card}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-              <span style={{ color: '#e2c97e', fontWeight: 600 }}>Table</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+              <span style={{ color: '#e2c97e', fontWeight: 600 }}>🎩 {game.dealerUsername}</span>
               <span style={{ ...s.badge, ...statusColor(game.status) }}>{game.status}</span>
             </div>
+            <div style={{ color: '#4a6a8a', fontSize: '0.75rem', marginBottom: '0.75rem' }}>
+              {new Date(game.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </div>
             <div style={{ color: '#7a9bb5', fontSize: '0.85rem', lineHeight: 1.8 }}>
-              <div>🃏 {game.deckCount} deck{game.deckCount !== 1 ? 's' : ''} ({game.deckCount * 52} cards)</div>
-              <div>👥 {game.minPlayers}–{game.maxPlayers} players</div>
-              <div style={{ fontSize: '0.75rem', color: '#4a6a8a' }}>ID: {game.id.slice(0, 8)}…</div>
+              <div>🃏 {game.deckCount} deck{game.deckCount !== 1 ? 's' : ''} · {game.deckCount * 52} cards</div>
+              <div>👥 {game.playerCount} / {game.maxPlayers} players</div>
             </div>
             <button
               style={{ ...s.btn, ...s.btnGold, width: '100%', marginTop: '1rem' }}

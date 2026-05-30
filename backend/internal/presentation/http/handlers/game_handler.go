@@ -10,6 +10,7 @@ import (
 	"github.com/vincehamel81-dot/deckforge/internal/domain/game"
 	"github.com/vincehamel81-dot/deckforge/internal/domain/player"
 	"github.com/vincehamel81-dot/deckforge/internal/domain/shoe"
+	"github.com/vincehamel81-dot/deckforge/internal/domain/user"
 	"github.com/vincehamel81-dot/deckforge/internal/presentation/http/middleware"
 )
 
@@ -17,10 +18,11 @@ type GameHandler struct {
 	games   game.Repository
 	players player.Repository
 	shoes   shoe.Repository
+	users   user.Repository
 }
 
-func NewGameHandler(games game.Repository, players player.Repository, shoes shoe.Repository) *GameHandler {
-	return &GameHandler{games: games, players: players, shoes: shoes}
+func NewGameHandler(games game.Repository, players player.Repository, shoes shoe.Repository, users user.Repository) *GameHandler {
+	return &GameHandler{games: games, players: players, shoes: shoes, users: users}
 }
 
 type createGameRequest struct {
@@ -64,12 +66,12 @@ func (h *GameHandler) ListGames(c *gin.Context) {
 		s := game.Status(statusStr)
 		filter = &s
 	}
-	gamesList, err := queries.ListGames(filter, h.games)
+	summaries, err := queries.ListGames(filter, h.games, h.players, h.users)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"games": gamesList})
+	c.JSON(http.StatusOK, gin.H{"games": summaries})
 }
 
 func (h *GameHandler) GetGame(c *gin.Context) {
@@ -129,7 +131,7 @@ func (h *GameHandler) EndGame(c *gin.Context) {
 	id, _ := uuid.Parse(c.Param("id"))
 	dealerID, _ := uuid.Parse(claims.UserID)
 
-	g, err := commands.EndGame(commands.EndGameCommand{GameID: id, DealerUserID: dealerID}, h.games)
+	g, err := commands.EndGame(commands.EndGameCommand{GameID: id, DealerUserID: dealerID}, h.games, h.players)
 	if err != nil {
 		status := http.StatusBadRequest
 		if err == commands.ErrGameNotFound {

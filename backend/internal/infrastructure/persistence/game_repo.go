@@ -35,7 +35,7 @@ func (r *gameRepo) FindAll(statusFilter *game.Status) ([]*game.Game, error) {
 	if statusFilter != nil {
 		q = q.Where("status = ?", string(*statusFilter))
 	}
-	if err := q.Order("created_at desc").Find(&models).Error; err != nil {
+	if err := q.Order("created_at asc").Find(&models).Error; err != nil {
 		return nil, err
 	}
 	games := make([]*game.Game, len(models))

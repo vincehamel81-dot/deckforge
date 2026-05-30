@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/vincehamel81-dot/deckforge/internal/domain/player"
@@ -48,7 +49,10 @@ func (r *playerRepo) FindByUserAndGame(userID, gameID uuid.UUID) (*player.Player
 
 func (r *playerRepo) FindActiveByUser(userID uuid.UUID) (*player.Player, error) {
 	var m PlayerModel
-	err := r.db.First(&m, "user_id = ? AND left_at IS NULL", userID.String()).Error
+	// Exclude players in FINISHED games — they should not block re-joining.
+	err := r.db.Joins("JOIN games ON games.id = players.game_id").
+		Where("players.user_id = ? AND players.left_at IS NULL AND games.status != 'FINISHED'", userID.String()).
+		First(&m).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -56,6 +60,13 @@ func (r *playerRepo) FindActiveByUser(userID uuid.UUID) (*player.Player, error) 
 		return nil, err
 	}
 	return toPlayerDomain(&m), nil
+}
+
+func (r *playerRepo) MarkAllLeft(gameID uuid.UUID) error {
+	now := time.Now().UTC()
+	return r.db.Model(&PlayerModel{}).
+		Where("game_id = ? AND left_at IS NULL", gameID.String()).
+		Update("left_at", now).Error
 }
 
 func (r *playerRepo) FindByID(id uuid.UUID) (*player.Player, error) {

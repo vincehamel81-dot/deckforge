@@ -116,3 +116,10 @@ export function useAddDeck(gameId: string) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['game', gameId] }),
   })
 }
+
+export function useLeaveGame(gameId: string) {
+  return useMutation({
+    mutationFn: (playerId: string) =>
+      apiClient.delete(`/games/${gameId}/players/${playerId}`),
+  })
+}

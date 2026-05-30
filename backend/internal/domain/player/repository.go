@@ -11,4 +11,5 @@ type Repository interface {
 	FindByID(id uuid.UUID) (*Player, error)
 	Update(p *Player) error
 	CountActive(gameID uuid.UUID) (int, error)
+	MarkAllLeft(gameID uuid.UUID) error
 }

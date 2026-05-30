@@ -1,25 +1,27 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"regexp"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	jwtpkg "github.com/vincehamel81-dot/deckforge/internal/infrastructure/auth"
 	"github.com/vincehamel81-dot/deckforge/internal/domain/user"
+	jwtpkg "github.com/vincehamel81-dot/deckforge/internal/infrastructure/auth"
 )
 
-var usernameRegex = regexp.MustCompile(`^[a-zA-Z0-9]{3,}$`)
+var usernameAlphanumeric = regexp.MustCompile(`^[a-zA-Z0-9]+$`)
 
 type AuthHandler struct {
-	users     user.Repository
-	jwtSecret string
-	jwtExpiry time.Duration
+	users          user.Repository
+	jwtSecret      string
+	jwtExpiry      time.Duration
+	maxUsernameLen int
 }
 
-func NewAuthHandler(users user.Repository, jwtSecret string, jwtExpiry time.Duration) *AuthHandler {
-	return &AuthHandler{users: users, jwtSecret: jwtSecret, jwtExpiry: jwtExpiry}
+func NewAuthHandler(users user.Repository, jwtSecret string, jwtExpiry time.Duration, maxUsernameLen int) *AuthHandler {
+	return &AuthHandler{users: users, jwtSecret: jwtSecret, jwtExpiry: jwtExpiry, maxUsernameLen: maxUsernameLen}
 }
 
 type registerRequest struct {
@@ -32,8 +34,12 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "username is required"})
 		return
 	}
-	if !usernameRegex.MatchString(req.Username) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "username must be alphanumeric and at least 3 characters"})
+	if n := len(req.Username); n < 3 || n > h.maxUsernameLen {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("username must be 3–%d characters", h.maxUsernameLen)})
+		return
+	}
+	if !usernameAlphanumeric.MatchString(req.Username) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "username must contain only letters and numbers"})
 		return
 	}
 	exists, err := h.users.ExistsByUsername(req.Username)

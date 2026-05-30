@@ -4,7 +4,7 @@ import { useRequireAuth } from '../../shared/hooks/useRequireAuth'
 import { useAuthStore } from '../auth/authStore'
 import {
   useGameDetail, useLeaderboard, usePlayerHand, useSuitCounts,
-  useStartGame, useEndGame, useShuffle, useDealToAll, useAddDeck,
+  useStartGame, useEndGame, useShuffle, useDealToAll, useAddDeck, useLeaveGame,
   type LeaderboardEntry,
 } from './useTable'
 
@@ -67,9 +67,11 @@ export default function TablePage() {
   const shuffle = useShuffle(gameId!)
   const dealToAll = useDealToAll(gameId!)
   const addDeck = useAddDeck(gameId!)
+  const leaveGame = useLeaveGame(gameId!)
 
   const [dealCount, setDealCount] = useState(1)
   const [startDeal, setStartDeal] = useState(2)
+  const [shuffleMsg, setShuffleMsg] = useState('')
 
   if (!authed) return null
   if (isLoading || !detail) return (
@@ -100,7 +102,16 @@ export default function TablePage() {
           }}>
             {game.status}
           </span>
-          <button onClick={() => navigate('/')} style={{ padding: '0.4rem 0.8rem', background: 'transparent', border: '1px solid #4a6a8a', borderRadius: '6px', color: '#7a9bb5', cursor: 'pointer' }}>← Lobby</button>
+          <button
+            onClick={async () => {
+              if (myEntry && game.status !== 'FINISHED') {
+                if (!window.confirm('Leave this table? Your cards will be returned to the shoe.')) return
+                await leaveGame.mutateAsync(myEntry.playerId)
+              }
+              navigate('/')
+            }}
+            style={{ padding: '0.4rem 0.8rem', background: 'transparent', border: '1px solid #4a6a8a', borderRadius: '6px', color: '#7a9bb5', cursor: 'pointer' }}
+          >← Lobby</button>
         </div>
       </div>
 
@@ -148,24 +159,51 @@ export default function TablePage() {
                     <button onClick={() => addDeck.mutate()} style={{ padding: '0.5rem 1rem', background: '#1a3a4a', color: '#60a5fa', border: '1px solid #60a5fa', borderRadius: '8px', cursor: 'pointer' }}>
                       + Add Deck
                     </button>
-                    <button onClick={() => shuffle.mutate()} style={{ padding: '0.5rem 1rem', background: '#1a2a4a', color: '#a78bfa', border: '1px solid #a78bfa', borderRadius: '8px', cursor: 'pointer' }}>
+                    <button
+                      onClick={async () => {
+                        await shuffle.mutateAsync()
+                        setShuffleMsg('✓ Shuffled!')
+                        setTimeout(() => setShuffleMsg(''), 2500)
+                      }}
+                      style={{ padding: '0.5rem 1rem', background: '#1a2a4a', color: '#a78bfa', border: '1px solid #a78bfa', borderRadius: '8px', cursor: 'pointer' }}
+                    >
                       🔀 Shuffle
                     </button>
+                    {shuffleMsg && <span style={{ color: '#a78bfa', fontSize: '0.85rem' }}>{shuffleMsg}</span>}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       <span style={{ color: '#7a9bb5', fontSize: '0.85rem' }}>Initial deal:</span>
                       <input type="number" min={0} max={10} value={startDeal} onChange={e => setStartDeal(+e.target.value)}
                         style={{ width: '50px', padding: '0.4rem', background: '#0f1a2e', border: '1px solid #2d4a6a', borderRadius: '6px', color: '#e2e8f0', textAlign: 'center' }} />
                     </div>
-                    <button onClick={() => startGame.mutate(startDeal)} style={{ padding: '0.5rem 1.2rem', background: '#1a4a2a', color: '#4ade80', border: '1px solid #4ade80', borderRadius: '8px', cursor: 'pointer', fontWeight: 700 }}>
-                      ▶ Start Game
-                    </button>
+                    {(leaderboard?.length ?? 0) < game.minPlayers ? (
+                      <span style={{ color: '#7a9bb5', fontSize: '0.85rem' }}>
+                        ⏳ Waiting for players ({leaderboard?.length ?? 0}/{game.minPlayers})
+                      </span>
+                    ) : (
+                      <button onClick={() => startGame.mutate(startDeal)} style={{ padding: '0.5rem 1.2rem', background: '#1a4a2a', color: '#4ade80', border: '1px solid #4ade80', borderRadius: '8px', cursor: 'pointer', fontWeight: 700 }}>
+                        ▶ Start Game
+                      </button>
+                    )}
+                    {startGame.isError && (
+                      <span style={{ color: '#f87171', fontSize: '0.85rem' }}>
+                        {(startGame.error as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Could not start game'}
+                      </span>
+                    )}
                   </>
                 )}
                 {game.status === 'IN_PROGRESS' && (
                   <>
-                    <button onClick={() => shuffle.mutate()} style={{ padding: '0.5rem 1rem', background: '#1a2a4a', color: '#a78bfa', border: '1px solid #a78bfa', borderRadius: '8px', cursor: 'pointer' }}>
+                    <button
+                      onClick={async () => {
+                        await shuffle.mutateAsync()
+                        setShuffleMsg('✓ Shuffled!')
+                        setTimeout(() => setShuffleMsg(''), 2500)
+                      }}
+                      style={{ padding: '0.5rem 1rem', background: '#1a2a4a', color: '#a78bfa', border: '1px solid #a78bfa', borderRadius: '8px', cursor: 'pointer' }}
+                    >
                       🔀 Shuffle
                     </button>
+                    {shuffleMsg && <span style={{ color: '#a78bfa', fontSize: '0.85rem' }}>{shuffleMsg}</span>}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       <span style={{ color: '#7a9bb5', fontSize: '0.85rem' }}>Deal cards:</span>
                       <input type="number" min={1} max={10} value={dealCount} onChange={e => setDealCount(+e.target.value)}

@@ -302,6 +302,22 @@ auto_ended           { reason: "shoe_exhausted", winnerId, leaderboard: [...] }
 **Privacy invariant:** `cards_dealt` never includes card values. Only the card holder learns
 their values via `GET /games/:id/players/:pid/hand`.
 
+### Turn timer (Phase 2)
+
+Each player has **15 seconds** to Draw or Accept on their turn (configurable via `TURN_TIMEOUT_SECONDS`
+env var). The server tracks the deadline server-side; the client renders an animated countdown.
+
+On expiry the server auto-fires an Accept (pass) for that player and emits `turn_changed`.
+The frontend animates the remaining seconds on the active player's seat during their turn.
+
+```
+turn_timer_started   { playerId, expiresAt }   ← ISO-8601 timestamp; client drives countdown
+turn_expired         { playerId }               ← server auto-accepted; turn_changed follows
+```
+
+Client implementation: a `useEffect` in `DrawControls` starts a `setInterval` on `turn_timer_started`
+and clears it on `turn_changed` or component unmount.
+
 ---
 
 ## Role model

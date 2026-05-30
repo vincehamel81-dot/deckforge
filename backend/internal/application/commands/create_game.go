@@ -40,7 +40,16 @@ func CreateGame(cmd CreateGameCommand, games game.Repository, players player.Rep
 		return nil, ErrInvalidPlayerRange
 	}
 
-	g := game.New(cmd.DealerUserID, cmd.DeckCount, cmd.MinPlayers, cmd.MaxPlayers)
+	existing, err := players.FindActiveByUser(cmd.DealerUserID)
+	if err != nil {
+		return nil, err
+	}
+	if existing != nil {
+		return nil, ErrAlreadyInGame
+	}
+
+	// DeckCount starts at 0 — physical decks are added via AddDeckToShoe after creation.
+	g := game.New(cmd.DealerUserID, 0, cmd.MinPlayers, cmd.MaxPlayers)
 	if err := games.Create(g); err != nil {
 		return nil, err
 	}

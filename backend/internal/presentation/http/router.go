@@ -33,8 +33,8 @@ func NewRouter(
 		jwtExpiry = 24 * time.Hour
 	}
 
-	authH := handlers.NewAuthHandler(users, cfg.JWTSecret, jwtExpiry)
-	gameH := handlers.NewGameHandler(games, players, shoes)
+	authH := handlers.NewAuthHandler(users, cfg.JWTSecret, jwtExpiry, cfg.MaxUsernameLength)
+	gameH := handlers.NewGameHandler(games, players, shoes, users)
 	shoeH := handlers.NewShoeHandler(games, shoes)
 	playerH := handlers.NewPlayerHandler(games, players, shoes)
 	dealH := handlers.NewDealHandler(games, players, shoes, users)

@@ -13,6 +13,7 @@ type Config struct {
 	CORSOrigin        string
 	MinPlayers        int
 	MaxPlayers        int
+	MaxUsernameLength int
 	AdminSeedUsername string
 }
 
@@ -25,6 +26,7 @@ func Load() *Config {
 		CORSOrigin:        getEnv("CORS_ORIGIN", "http://localhost:5173"),
 		MinPlayers:        getEnvInt("MIN_PLAYERS", 2),
 		MaxPlayers:        getEnvInt("MAX_PLAYERS", 8),
+		MaxUsernameLength: getEnvInt("MAX_USERNAME_LENGTH", 15),
 		AdminSeedUsername: getEnv("ADMIN_SEED_USERNAME", ""),
 	}
 }

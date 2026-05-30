@@ -72,7 +72,7 @@ type EndGameCommand struct {
 	DealerUserID uuid.UUID
 }
 
-func EndGame(cmd EndGameCommand, games game.Repository) (*game.Game, error) {
+func EndGame(cmd EndGameCommand, games game.Repository, players player.Repository) (*game.Game, error) {
 	g, err := games.FindByID(cmd.GameID)
 	if err != nil || g == nil {
 		return nil, ErrGameNotFound
@@ -84,6 +84,9 @@ func EndGame(cmd EndGameCommand, games game.Repository) (*game.Game, error) {
 		return nil, err
 	}
 	if err := games.Update(g); err != nil {
+		return nil, err
+	}
+	if err := players.MarkAllLeft(cmd.GameID); err != nil {
 		return nil, err
 	}
 	return g, nil

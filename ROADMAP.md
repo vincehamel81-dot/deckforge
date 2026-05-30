@@ -76,12 +76,14 @@ core engine.
 - [ ] Turn order state machine — `currentTurnPlayerId` on Game entity
 - [ ] `POST /games/:id/draw` — active player draws 1 card for ALL players (Draw/Accept mechanic); triggers auto-end check
 - [ ] `POST /games/:id/accept` — active player passes their turn; advances to next player
+- [ ] **Turn timer** — 15 s per turn (`TURN_TIMEOUT_SECONDS` env var, default 15); server-side goroutine per active game; on expiry, server auto-fires Accept and emits `turn_expired` then `turn_changed`; broadcasts `turn_timer_started { playerId, expiresAt }` so clients can render a countdown
 
 ### Frontend
 - [ ] WebSocket client (`lib/wsClient.ts`) — auto-reconnect, exponential backoff
 - [ ] Live leaderboard updates (no polling — pure push)
 - [ ] Turn indicator — "Your turn" / "Waiting for Alice..."
 - [ ] Draw / Accept buttons (only shown on your turn)
+- [ ] **Turn countdown** — animated timer on the active player's seat; driven by `turn_timer_started.expiresAt`; clears on `turn_changed`
 - [ ] Animated card deal (CSS transition — card slides to player seat)
 - [ ] Toast notifications for game events
 

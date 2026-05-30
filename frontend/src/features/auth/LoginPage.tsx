@@ -14,8 +14,8 @@ export default function LoginPage() {
     e.preventDefault()
     setError('')
 
-    if (!/^[a-zA-Z0-9]{3,}$/.test(username)) {
-      setError('Username must be alphanumeric and at least 3 characters')
+    if (!/^[a-zA-Z0-9]+$/.test(username) || username.length < 3 || username.length > 15) {
+      setError('Username must be 3–15 letters or numbers, no spaces or symbols')
       return
     }
 
@@ -41,6 +41,7 @@ export default function LoginPage() {
             type="text"
             placeholder="Username (e.g. alice42)"
             value={username}
+            maxLength={15}
             onChange={(e) => setUsername(e.target.value)}
             style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #2d4a6a', background: '#0f1a2e', color: '#e2e8f0', fontSize: '1rem', boxSizing: 'border-box' }}
             autoFocus
