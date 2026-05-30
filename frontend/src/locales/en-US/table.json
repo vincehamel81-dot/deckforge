@@ -44,6 +44,11 @@
     "kick": "kick",
     "noPlayers": "No players yet"
   },
+  "status": {
+    "WAITING": "Waiting",
+    "IN_PROGRESS": "In Progress",
+    "FINISHED": "Finished"
+  },
   "result": {
     "gameOver": "Game Over",
     "draw": "Draw — {{players}} — {{score}} pts",

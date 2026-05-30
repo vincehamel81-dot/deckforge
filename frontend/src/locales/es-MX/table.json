@@ -13,6 +13,11 @@
     "title": "Jugadores",
     "noPlayers": "Sin jugadores"
   },
+  "status": {
+    "WAITING": "Esperando",
+    "IN_PROGRESS": "En progreso",
+    "FINISHED": "Terminado"
+  },
   "result": {
     "gameOver": "Juego Terminado",
     "draw": "Empate — {{players}} — {{score}} pts",

@@ -13,6 +13,8 @@
   "dealerLabel": "🎩 {{name}}",
   "confirmLeaveDealer": "You are the dealer. Leaving will close this table for everyone and delete it. Proceed?",
   "confirmLeavePlayer": "Leave this table? Your cards will be returned to the shoe.",
+  "confirmKickDealer": "This player is the dealer. Kicking them will delete the table for everyone. Proceed?",
+  "adminDelete": "Admin: delete table",
   "modal": {
     "title": "Create New Table",
     "deckCount": "Number of Decks (1–8)",

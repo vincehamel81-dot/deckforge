@@ -32,6 +32,8 @@ export default function TablePage() {
   const { data: suitCounts, refetch: refetchSuits } = useSuitCounts(gameId!)
   const [showShoeDetails, setShowShoeDetails] = useState(false)
   const [isCheckingShoe, setIsCheckingShoe] = useState(false)
+  // Frozen snapshot from the last manual "Check Shoe" click — does NOT auto-update when cards are dealt.
+  const [shoeCheckData, setShoeCheckData] = useState<typeof suitCounts>(undefined)
   useCardCounts(gameId!) // kept for cache warm-up; data surfaced via shoe queries
 
   const startGame = useStartGame(gameId!)
@@ -161,7 +163,7 @@ export default function TablePage() {
             background: game.status === 'WAITING' ? '#1a4a2a' : '#1a2a4a',
             color: game.status === 'WAITING' ? '#4ade80' : '#60a5fa',
           }}>
-            {game.status}
+            {t(`table:status.${game.status}`)}
           </span>
           <LocaleSwitcher />
           <button
@@ -200,7 +202,8 @@ export default function TablePage() {
                 onClick={async () => {
                   if (showShoeDetails) { setShowShoeDetails(false); return }
                   setIsCheckingShoe(true)
-                  await refetchSuits()
+                  const result = await refetchSuits()
+                  if (result.data) setShoeCheckData(result.data)
                   setIsCheckingShoe(false)
                   setShowShoeDetails(true)
                 }}
@@ -228,11 +231,11 @@ export default function TablePage() {
                 ))}
               </div>
             )}
-            {showShoeDetails && suitCounts && (
+            {showShoeDetails && shoeCheckData && (
               <div style={{ marginTop: '0.75rem', borderTop: '1px solid #2d4a6a', paddingTop: '0.75rem' }}>
                 <p style={{ color: '#4a6a8a', fontSize: '0.75rem', margin: '0 0 0.5rem' }}>{t('table:shoe.undealtBySuit')}</p>
                 <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
-                  {suitCounts.map(s => (
+                  {shoeCheckData.map(s => (
                     <span key={s.suit} style={{ fontSize: '0.85rem' }}>
                       <span style={{ color: SUIT_COLOR[s.suit] ?? '#e2e8f0' }}>{suitLabel(s.suit)}</span>
                       <span style={{ color: '#e2e8f0' }}>: <strong>{s.count}</strong></span>
@@ -293,7 +296,7 @@ export default function TablePage() {
                 onKick={(pid) => {
                   const entry = leaderboard.find(e => e.playerId === pid)
                   if (entry?.userId === game.dealerUserId) {
-                    if (!window.confirm(t('lobby:confirmLeaveDealer'))) return
+                    if (!window.confirm(t('lobby:confirmKickDealer'))) return
                     deleteGame.mutate(undefined, { onSuccess: () => navigate('/') })
                   } else {
                     leaveGame.mutate(pid)

@@ -9,6 +9,8 @@
   "decks_one": "{{count}} sabot · {{total}} cartes",
   "decks_other": "{{count}} sabots · {{total}} cartes",
   "players": "{{current}} / {{max}} joueurs",
+  "confirmKickDealer": "Ce joueur est le croupier. L'exclure supprimera la table pour tout le monde. Continuer?",
+  "adminDelete": "Admin : supprimer la table",
   "modal": {
     "title": "Créer une Nouvelle Table",
     "deckCount": "Nombre de Sabots (1–8)",

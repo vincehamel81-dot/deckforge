@@ -30,7 +30,7 @@ function statusColor(status: string) {
 
 export default function GamesPage() {
   const authed = useRequireAuth()
-  const { t } = useTranslation(['common', 'lobby'])
+  const { t } = useTranslation(['common', 'lobby', 'table'])
   const user = useAuthStore((s) => s.user)
   const logout = useAuthStore((s) => s.logout)
   const navigate = useNavigate()
@@ -84,7 +84,7 @@ export default function GamesPage() {
           <div key={game.id} style={s.card}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
               <span style={{ color: '#e2c97e', fontWeight: 600 }}>{t('lobby:dealerLabel', { name: game.dealerUsername })}</span>
-              <span style={{ ...s.badge, ...statusColor(game.status) }}>{game.status}</span>
+              <span style={{ ...s.badge, ...statusColor(game.status) }}>{t(`table:status.${game.status}`)}</span>
             </div>
             <div style={{ color: '#4a6a8a', fontSize: '0.75rem', marginBottom: '0.75rem' }}>
               {new Date(game.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -105,7 +105,7 @@ export default function GamesPage() {
                 <button
                   style={{ ...s.btn, background: 'transparent', color: '#f87171', border: '1px solid #f87171', padding: '0.5rem 0.75rem' }}
                   onClick={() => deleteGame.mutate(game.id)}
-                  title="Admin: delete table"
+                  title={t('lobby:adminDelete')}
                 >
                   🗑
                 </button>

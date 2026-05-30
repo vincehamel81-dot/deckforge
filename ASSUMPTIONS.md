@@ -105,3 +105,47 @@ Lazy loading would add code complexity with no measurable performance benefit at
 **Production path:** If locale files grow significantly (hundreds of keys, many languages), switch
 to dynamic `import()` per locale+namespace, add a `<Suspense>` boundary, and rely on the
 `sessionStorage` merge cache (see A-005) to eliminate repeated loads.
+
+---
+
+## A-008: Language preference — per browser, not per user account
+
+The selected language (`deckforge-locale` in localStorage) belongs to the browser instance, not to
+the authenticated user. A user on two different devices or browsers will have independent language
+settings and may need to reselect their language on each new browser.
+
+Additionally, localStorage is shared across all tabs of the same origin within a single browser
+session. Changing the language in one tab immediately takes effect in all other open tabs of the
+same DeckForge session — this is intentional and provides consistent UX without tab-to-tab
+coordination.
+
+**Why:** Linking language preference to the user account requires a database column (`users.locale`),
+an API endpoint to read/write it, and a login-time read before the first render. This is out of
+scope for the demo.
+
+**Production path:** Add a `locale` column to the `users` table (default `en-US`). Persist the
+preference server-side on every language change via `PATCH /users/me`. Read it at login time and
+hydrate the i18n instance before React renders. This ensures the correct language appears regardless
+of browser or device.
+
+---
+
+## A-009: No IP-based session gating — multiple players per IP allowed
+
+The backend does not track or restrict connections by IP address. Multiple users behind the same
+NAT (home router, office network, mobile carrier) can all connect and participate in the same or
+different games without any throttling or identity conflict.
+
+**Why:** IP-based gating is not appropriate for a card game:
+- Corporate and home networks routinely share a single public IP.
+- Mobile carriers use CGNAT, meaning thousands of users share one IP.
+- The correct identity boundary is the authenticated user (JWT), not the network address.
+
+**Production path:** If abuse prevention is needed (e.g. bot farms or table collusion), the right
+approach is account-level controls, not IP blocking:
+- Rate limiting on the auth endpoint prevents account creation storms.
+- With SSO (Entra ID / OIDC), each user is tied to an organizational identity with MFA — this is
+  a far stronger anti-abuse signal than an IP address.
+- Concurrent session limits (`max_sessions_per_user`) can be enforced at the token level: the
+  server tracks active JWTs per user and rejects new logins once the limit is reached, regardless
+  of IP. This prevents sharing accounts across a table without blocking legitimate multi-device use.

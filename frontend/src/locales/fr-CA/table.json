@@ -44,6 +44,11 @@
     "kick": "exclure",
     "noPlayers": "Aucun joueur"
   },
+  "status": {
+    "WAITING": "En attente",
+    "IN_PROGRESS": "En cours",
+    "FINISHED": "Terminée"
+  },
   "result": {
     "gameOver": "Partie Terminée",
     "draw": "Égalité — {{players}} — {{score}} pts",

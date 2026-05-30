@@ -75,19 +75,4 @@ This document preserves the full analysis for interview reference.
    and because goroutines make the WebSocket layer trivially correct" is a stronger answer
    than "I used what I know."
 
----
-
-## Interview answer (prepared)
-
-> "I chose Go over Java for three reasons. First, GoTo's core product is real-time communication,
-> and Go is the dominant language in that space — Twilio, Discord, and Cloudflare all use it for
-> their real-time services. Second, Go's goroutine model makes WebSocket handling structurally
-> correct and cheap: each player connection is a goroutine, broadcasting to a game is a channel
-> fan-out — no thread pool tuning, no executor configuration. Third, the assignment explicitly
-> calls this a foundational product. A single statically compiled binary in a 10 MB Alpine image
-> is a better foundation than a JVM app. Java was a serious contender — its patterns map
-> directly to my .NET background — but Go was the right fit for this specific domain and team."
-
----
-
 *Decision made: 2026-05-29. Go chosen.*
