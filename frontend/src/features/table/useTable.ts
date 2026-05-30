@@ -88,7 +88,13 @@ export function useStartGame(gameId: string) {
   return useMutation({
     mutationFn: (initialDealCount: number) =>
       apiClient.post(`/games/${gameId}/start`, { initialDealCount }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['game', gameId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['game', gameId] })
+      qc.invalidateQueries({ queryKey: ['leaderboard', gameId] })
+      qc.invalidateQueries({ queryKey: ['suits', gameId] })
+      qc.invalidateQueries({ queryKey: ['cards', gameId] })
+      qc.refetchQueries({ queryKey: ['hand'] })
+    },
   })
 }
 
@@ -120,13 +126,13 @@ export function useDealToAll(gameId: string) {
   return useMutation({
     mutationFn: ({ count }: { count: number }) =>
       apiClient.post(`/games/${gameId}/deal-round`, { count }),
-    onSuccess: () => {
+    onSuccess: (res) => {
+      // If the shoe was empty nothing changed — skip all downstream refetches.
+      if (res.data.totalDealt === 0) return
       qc.invalidateQueries({ queryKey: ['leaderboard', gameId] })
       qc.invalidateQueries({ queryKey: ['game', gameId] })
       qc.invalidateQueries({ queryKey: ['suits', gameId] })
       qc.invalidateQueries({ queryKey: ['cards', gameId] })
-      // refetchQueries forces an immediate re-fetch regardless of staleness,
-      // bypassing the polling timer so the dealing player sees their hand instantly.
       qc.refetchQueries({ queryKey: ['hand'] })
     },
   })

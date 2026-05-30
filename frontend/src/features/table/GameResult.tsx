@@ -13,32 +13,42 @@ interface GameResultProps {
 export function GameResult({
   leaderboard, hand, dealerUserId, currentUserId, myHandValue, onLobby,
 }: GameResultProps) {
-  const winner = leaderboard[0]
+  const topScore = leaderboard[0]?.handValue ?? 0
+  const topPlayers = leaderboard.filter(e => e.handValue === topScore)
+  const isDraw = topPlayers.length > 1
+
   return (
     <div style={{ minHeight: '100vh', background: '#0f1a2e', color: '#e2e8f0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
       <div style={{ background: '#1a2a40', borderRadius: '16px', padding: '2.5rem', width: '100%', maxWidth: '480px', border: '1px solid #e2c97e44', textAlign: 'center' }}>
-        <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>🏆</div>
+        <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>{isDraw ? '🤝' : '🏆'}</div>
         <h1 style={{ color: '#e2c97e', margin: '0 0 0.25rem' }}>Game Over</h1>
-        {winner && (
+        {isDraw ? (
+          <p style={{ color: '#60a5fa', marginBottom: '1.5rem' }}>
+            Draw — <strong>{topPlayers.map(p => p.username).join(', ')}</strong> — {topScore} pts
+          </p>
+        ) : (
           <p style={{ color: '#4ade80', marginBottom: '1.5rem' }}>
-            Winner: <strong>{winner.username}</strong> — {winner.handValue} pts
+            Winner: <strong>{topPlayers[0]?.username}</strong> — {topScore} pts
           </p>
         )}
         <div style={{ textAlign: 'left', marginBottom: '1.5rem' }}>
           <h3 style={{ color: '#7a9bb5', marginBottom: '0.75rem', fontWeight: 400 }}>Final Standings</h3>
-          {leaderboard.map((e, i) => (
-            <div key={e.playerId} style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: '0.5rem 0.75rem', borderRadius: '8px', marginBottom: '0.4rem',
-              background: i === 0 ? '#1a3a20' : '#0f1a2e', border: '1px solid #2d4a6a',
-            }}>
-              <span style={{ color: i === 0 ? '#4ade80' : '#e2e8f0' }}>
-                #{i + 1} {e.username}{e.userId === dealerUserId ? ' 🎩' : ''}
-                {e.userId === currentUserId ? ' (you)' : ''}
-              </span>
-              <span style={{ color: '#e2c97e', fontWeight: 700 }}>{e.handValue} pts · {e.cardCount} cards</span>
-            </div>
-          ))}
+          {leaderboard.map((e, i) => {
+            const isTop = e.handValue === topScore
+            return (
+              <div key={e.playerId} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '0.5rem 0.75rem', borderRadius: '8px', marginBottom: '0.4rem',
+                background: isTop ? '#1a3a20' : '#0f1a2e', border: '1px solid #2d4a6a',
+              }}>
+                <span style={{ color: isTop ? '#4ade80' : '#e2e8f0' }}>
+                  #{i + 1} {e.username}{e.userId === dealerUserId ? ' 🎩' : ''}
+                  {e.userId === currentUserId ? ' (you)' : ''}
+                </span>
+                <span style={{ color: '#e2c97e', fontWeight: 700 }}>{e.handValue} pts · {e.cardCount} cards</span>
+              </div>
+            )
+          })}
         </div>
         {hand && hand.length > 0 && (
           <div style={{ marginBottom: '1.5rem', textAlign: 'left' }}>

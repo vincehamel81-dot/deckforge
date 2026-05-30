@@ -43,14 +43,18 @@ func (r *shoeRepo) FindByPlayer(playerID uuid.UUID) ([]*shoe.ShoeCard, error) {
 }
 
 func (r *shoeRepo) UpdatePositions(cards []*shoe.ShoeCard) error {
-	for _, c := range cards {
-		if err := r.db.Model(&ShoeCardModel{}).
-			Where("id = ?", c.ID.String()).
-			Update("position", c.Position).Error; err != nil {
-			return err
+	// Wrap in a single transaction — one commit for all N position updates
+	// instead of N individual auto-committed writes (critical for large shoes).
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		for _, c := range cards {
+			if err := tx.Model(&ShoeCardModel{}).
+				Where("id = ?", c.ID.String()).
+				Update("position", c.Position).Error; err != nil {
+				return err
+			}
 		}
-	}
-	return nil
+		return nil
+	})
 }
 
 func (r *shoeRepo) DealCard(cardID uuid.UUID, playerID uuid.UUID) error {

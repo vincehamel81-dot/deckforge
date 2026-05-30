@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useRequireAuth } from '../../shared/hooks/useRequireAuth'
 import { useAuthStore } from '../auth/authStore'
@@ -18,13 +19,15 @@ export default function TablePage() {
   const user = useAuthStore(s => s.user)
   const navigate = useNavigate()
 
-  useGameSocket(gameId!)
+  const [tableClosed, setTableClosed] = useState(false)
+  useGameSocket(gameId!, { onGameDeleted: () => setTableClosed(true) })
 
   const { data: detail, isLoading, isError } = useGameDetail(gameId!)
   const { data: leaderboard } = useLeaderboard(gameId!)
   const myEntry = leaderboard?.find(e => e.userId === user?.id)
   const { data: hand } = usePlayerHand(gameId!, myEntry?.playerId)
   const { data: suitCounts } = useSuitCounts(gameId!)
+  const qc = useQueryClient()
   const [showShoeDetails, setShowShoeDetails] = useState(false)
   const { data: cardCounts } = useCardCounts(gameId!)
 
@@ -37,7 +40,23 @@ export default function TablePage() {
   const deleteGame = useDeleteGame(gameId!)
 
   if (!authed) return null
-  if (isError) { navigate('/', { replace: true }); return null }
+
+  if (tableClosed || isError) return (
+    <div style={{ minHeight: '100vh', background: '#0f1a2e', color: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ background: '#1a2a40', borderRadius: '16px', padding: '2.5rem', maxWidth: '400px', width: '100%', textAlign: 'center', border: '1px solid #f8717144' }}>
+        <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🚪</div>
+        <h2 style={{ color: '#f87171', margin: '0 0 0.75rem' }}>Table Closed</h2>
+        <p style={{ color: '#7a9bb5', marginBottom: '1.5rem' }}>The dealer closed this table. All cards have been returned to the shoe.</p>
+        <button
+          onClick={() => navigate('/', { replace: true })}
+          style={{ padding: '0.75rem 2rem', background: '#e2c97e', color: '#0f1a2e', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', width: '100%' }}
+        >
+          Return to Lobby
+        </button>
+      </div>
+    </div>
+  )
+
   if (isLoading || !detail) return (
     <div style={{ minHeight: '100vh', background: '#0f1a2e', color: '#7a9bb5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       Loading table...
@@ -122,10 +141,16 @@ export default function TablePage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
               <h3 style={{ color: '#e2c97e', margin: 0 }}>🃏 Shoe Status</h3>
               <button
-                onClick={() => setShowShoeDetails(v => !v)}
+                onClick={() => {
+                  if (!showShoeDetails) {
+                    // Explicit user-initiated API call — force a fresh fetch, not cached data.
+                    qc.refetchQueries({ queryKey: ['suits', gameId!] })
+                  }
+                  setShowShoeDetails(v => !v)
+                }}
                 style={{ padding: '0.2rem 0.6rem', background: 'transparent', border: '1px solid #4a6a8a', borderRadius: '4px', color: '#7a9bb5', cursor: 'pointer', fontSize: '0.75rem' }}
               >
-                {showShoeDetails ? 'Hide Details' : 'Check Shoe'}
+                {showShoeDetails ? 'Hide Suits' : 'Check Suits'}
               </button>
             </div>
             <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
@@ -146,26 +171,31 @@ export default function TablePage() {
                 ))}
               </div>
             )}
-            {showShoeDetails && cardCounts && (
+            {showShoeDetails && suitCounts && (
               <div style={{ marginTop: '0.75rem', borderTop: '1px solid #2d4a6a', paddingTop: '0.75rem' }}>
-                <p style={{ color: '#4a6a8a', fontSize: '0.75rem', margin: '0 0 0.5rem' }}>Remaining cards by suit and value</p>
-                {(['HEARTS', 'SPADES', 'CLUBS', 'DIAMONDS'] as const).map(suit => {
-                  const cards = cardCounts.filter(c => c.suit === suit)
-                  if (cards.length === 0) return null
-                  return (
-                    <div key={suit} style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.4rem', alignItems: 'center' }}>
-                      <span style={{ color: SUIT_COLOR[suit], minWidth: '1rem' }}>{SUIT_SYMBOL[suit]}</span>
-                      {cards.map(c => (
-                        <span key={c.face} style={{ fontSize: '0.75rem', color: '#7a9bb5' }}>
-                          {FACE_LABEL[c.face] ?? c.face}×{c.count}
-                        </span>
-                      ))}
-                    </div>
-                  )
-                })}
+                <p style={{ color: '#4a6a8a', fontSize: '0.75rem', margin: '0 0 0.5rem' }}>Undealt cards per suit</p>
+                <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+                  {suitCounts.map(s => (
+                    <span key={s.suit} style={{ fontSize: '0.85rem' }}>
+                      <span style={{ color: SUIT_COLOR[s.suit] ?? '#e2e8f0' }}>
+                        {s.suit === 'HEARTS' ? 'Hearts' : s.suit === 'SPADES' ? 'Spades' : s.suit === 'CLUBS' ? 'Clubs' : 'Diamonds'}
+                      </span>
+                      <span style={{ color: '#e2e8f0' }}>: <strong>{s.count}</strong></span>
+                    </span>
+                  ))}
+                </div>
               </div>
             )}
           </div>
+
+          {/* A7: warn when shoe can't serve a full round */}
+          {game.status === 'IN_PROGRESS' && leaderboard && leaderboard.length > 0 && remainingCards < leaderboard.length && (
+            <div style={{ background: '#2a1a1a', border: '1px solid #f8717166', borderRadius: '8px', padding: '0.6rem 0.9rem', marginBottom: '1rem', fontSize: '0.85rem', color: '#f87171' }}>
+              {remainingCards === 0
+                ? '⚠ Shoe exhausted — no cards remaining. End the game to see final standings.'
+                : `⚠ Only ${remainingCards} card${remainingCards === 1 ? '' : 's'} left — not enough for a full round. End the game or deal partial hands.`}
+            </div>
+          )}
 
           {/* Player hand */}
           <div style={{ background: '#1a2a40', borderRadius: '12px', padding: '1rem', marginBottom: '1rem', border: '1px solid #2d4a6a' }}>
@@ -174,7 +204,11 @@ export default function TablePage() {
             </h3>
             {!hand || hand.length === 0
               ? <p style={{ color: '#4a6a8a' }}>No cards yet</p>
-              : <div style={{ display: 'flex', flexWrap: 'wrap' }}>{hand.map(c => <CardBadge key={c.id} suit={c.suit} face={c.face} />)}</div>
+              : <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+                  {hand.map((c, i) => (
+                    <CardBadge key={c.id} suit={c.suit} face={c.face} isNew={i === hand.length - 1} />
+                  ))}
+                </div>
             }
           </div>
 

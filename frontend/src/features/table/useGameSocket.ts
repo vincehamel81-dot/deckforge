@@ -12,12 +12,16 @@ type GameEvent =
   | 'player_left'
   | 'shoe_shuffled'
 
+interface UseGameSocketOptions {
+  onGameDeleted?: () => void
+}
+
 /**
  * Opens a WebSocket connection to the game hub and invalidates the relevant
  * TanStack Query caches on each push event.
  * Polling stays active as a slow fallback in case the socket drops.
  */
-export function useGameSocket(gameId: string) {
+export function useGameSocket(gameId: string, options: UseGameSocketOptions = {}) {
   const qc = useQueryClient()
 
   useEffect(() => {
@@ -27,7 +31,10 @@ export function useGameSocket(gameId: string) {
     const ws = new WebSocket(`${API_BASE}/games/${gameId}/ws?token=${token}`)
 
     ws.onmessage = (e: MessageEvent) => {
-      const { event } = JSON.parse(e.data) as { event: GameEvent }
+      const { event, payload } = JSON.parse(e.data) as {
+        event: GameEvent
+        payload?: { reason?: string }
+      }
 
       switch (event) {
         case 'cards_dealt':
@@ -43,14 +50,25 @@ export function useGameSocket(gameId: string) {
           qc.invalidateQueries({ queryKey: ['leaderboard', gameId] })
           qc.invalidateQueries({ queryKey: ['game', gameId] })
           break
-        case 'game_started':
         case 'game_ended':
+          if (payload?.reason === 'deleted') {
+            options.onGameDeleted?.()
+          } else {
+            qc.invalidateQueries({ queryKey: ['game', gameId] })
+            qc.invalidateQueries({ queryKey: ['games'] })
+          }
+          break
+        case 'game_started':
           qc.invalidateQueries({ queryKey: ['game', gameId] })
           qc.invalidateQueries({ queryKey: ['games'] })
+          qc.invalidateQueries({ queryKey: ['leaderboard', gameId] })
+          qc.invalidateQueries({ queryKey: ['suits', gameId] })
+          qc.invalidateQueries({ queryKey: ['cards', gameId] })
+          qc.refetchQueries({ queryKey: ['hand'] })
           break
       }
     }
 
     return () => ws.close()
-  }, [gameId, qc])
+  }, [gameId, qc]) // options intentionally omitted — callback identity not stable
 }

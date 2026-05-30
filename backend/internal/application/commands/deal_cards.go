@@ -12,6 +12,7 @@ type DealCardsCommand struct {
 	DealerUserID uuid.UUID
 	PlayerID     uuid.UUID
 	Count        int
+	AutoEnd      bool
 }
 
 type DealCardsResult struct {
@@ -55,12 +56,13 @@ func DealCards(cmd DealCardsCommand, games game.Repository, shoes shoe.Repositor
 
 	result := &DealCardsResult{DealtCount: toDeal}
 
-	// Auto-end check: if remaining cards < active players, game ends.
-	ended, err := checkAutoEnd(cmd.GameID, games, shoes, players)
-	if err != nil {
-		return nil, err
+	if cmd.AutoEnd {
+		ended, err := checkAutoEnd(cmd.GameID, games, shoes, players)
+		if err != nil {
+			return nil, err
+		}
+		result.GameEnded = ended
 	}
-	result.GameEnded = ended
 
 	return result, nil
 }
@@ -71,6 +73,7 @@ type DealRoundCommand struct {
 	GameID       uuid.UUID
 	DealerUserID uuid.UUID
 	Count        int
+	AutoEnd      bool
 }
 
 func DealRound(cmd DealRoundCommand, games game.Repository, shoes shoe.Repository, players player.Repository) (*DealCardsResult, error) {
@@ -113,11 +116,14 @@ func DealRound(cmd DealRoundCommand, games game.Repository, shoes shoe.Repositor
 		totalDealt += toDeal
 	}
 
-	ended, err := checkAutoEnd(cmd.GameID, games, shoes, players)
-	if err != nil {
-		return nil, err
+	if cmd.AutoEnd {
+		ended, err := checkAutoEnd(cmd.GameID, games, shoes, players)
+		if err != nil {
+			return nil, err
+		}
+		return &DealCardsResult{DealtCount: totalDealt, GameEnded: ended}, nil
 	}
-	return &DealCardsResult{DealtCount: totalDealt, GameEnded: ended}, nil
+	return &DealCardsResult{DealtCount: totalDealt, GameEnded: false}, nil
 }
 
 // checkAutoEnd ends the game if the shoe cannot deal a full round.

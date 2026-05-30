@@ -17,6 +17,7 @@ type Config struct {
 	MaxPlayers         int
 	MaxUsernameLength  int
 	AdminSeedUsernames []string
+	AutoEndGame        bool
 }
 
 func Load() *Config {
@@ -31,6 +32,7 @@ func Load() *Config {
 		MaxPlayers:         getEnvInt("MAX_PLAYERS", 8),
 		MaxUsernameLength:  getEnvInt("MAX_USERNAME_LENGTH", 15),
 		AdminSeedUsernames: parseCSV(getEnv("ADMIN_SEED_USERNAMES", "")),
+		AutoEndGame:        getEnvBool("AUTO_END_GAME", true),
 	}
 }
 
@@ -61,6 +63,17 @@ func getEnvInt(key string, fallback int) int {
 		if i, err := strconv.Atoi(v); err == nil {
 			return i
 		}
+	}
+	return fallback
+}
+
+func getEnvBool(key string, fallback bool) bool {
+	v := os.Getenv(key)
+	if v == "false" || v == "0" {
+		return false
+	}
+	if v == "true" || v == "1" {
+		return true
 	}
 	return fallback
 }

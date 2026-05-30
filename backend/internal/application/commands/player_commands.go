@@ -22,11 +22,15 @@ func AddPlayer(cmd AddPlayerCommand, games game.Repository, players player.Repos
 	}
 
 	// A user can only be in one active game at a time.
+	// Idempotent: re-joining the same game returns the existing player record.
 	existing, err := players.FindActiveByUser(cmd.UserID)
 	if err != nil {
 		return nil, err
 	}
 	if existing != nil {
+		if existing.GameID == cmd.GameID {
+			return existing, nil
+		}
 		return nil, ErrAlreadyInGame
 	}
 

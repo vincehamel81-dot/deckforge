@@ -21,10 +21,11 @@ type DealHandler struct {
 	shoes   shoe.Repository
 	users   user.Repository
 	hub     *ws.Hub
+	autoEnd bool
 }
 
-func NewDealHandler(games game.Repository, players player.Repository, shoes shoe.Repository, users user.Repository, hub *ws.Hub) *DealHandler {
-	return &DealHandler{games: games, players: players, shoes: shoes, users: users, hub: hub}
+func NewDealHandler(games game.Repository, players player.Repository, shoes shoe.Repository, users user.Repository, hub *ws.Hub, autoEnd bool) *DealHandler {
+	return &DealHandler{games: games, players: players, shoes: shoes, users: users, hub: hub, autoEnd: autoEnd}
 }
 
 type dealRequest struct {
@@ -68,6 +69,7 @@ func (h *DealHandler) DealCards(c *gin.Context) {
 		DealerUserID: dealerID,
 		PlayerID:     playerID,
 		Count:        req.Count,
+		AutoEnd:      h.autoEnd,
 	}, h.games, h.shoes, h.players)
 	if err != nil {
 		status := http.StatusBadRequest
@@ -120,6 +122,7 @@ func (h *DealHandler) DealRound(c *gin.Context) {
 		GameID:       gameID,
 		DealerUserID: dealerID,
 		Count:        req.Count,
+		AutoEnd:      h.autoEnd,
 	}, h.games, h.shoes, h.players)
 	if err != nil {
 		status := http.StatusBadRequest

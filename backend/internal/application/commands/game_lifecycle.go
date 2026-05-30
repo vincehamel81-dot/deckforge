@@ -11,6 +11,7 @@ type StartGameCommand struct {
 	GameID           uuid.UUID
 	DealerUserID     uuid.UUID
 	InitialDealCount int
+	AutoEnd          bool
 }
 
 func StartGame(cmd StartGameCommand, games game.Repository, players player.Repository, shoes shoe.Repository) (*game.Game, error) {
@@ -45,21 +46,40 @@ func StartGame(cmd StartGameCommand, games game.Repository, players player.Repos
 		return nil, err
 	}
 
+	// Auto-shuffle before dealing — assumption A11: shoe is always shuffled at game start.
+	undealtCards, err := shoes.FindUndealtByGame(cmd.GameID)
+	if err != nil {
+		return nil, err
+	}
+	shoe.Shuffle(undealtCards)
+	if err := shoes.UpdatePositions(undealtCards); err != nil {
+		return nil, err
+	}
+
 	// Deal initial hand to each active player if requested.
+	// Fetch undealt once and advance an index across players (same optimisation
+	// as DealRound) to avoid one full table scan per player.
 	if cmd.InitialDealCount > 0 {
 		activePlayers, err := players.FindActiveByGame(cmd.GameID)
 		if err != nil {
 			return nil, err
 		}
+		undealtForDeal, err := shoes.FindUndealtByGame(cmd.GameID)
+		if err != nil {
+			return nil, err
+		}
+		cardIdx := 0
 		for _, p := range activePlayers {
-			dealCmd := DealCardsCommand{
-				GameID:     cmd.GameID,
-				DealerUserID: cmd.DealerUserID,
-				PlayerID:   p.ID,
-				Count:      cmd.InitialDealCount,
+			available := len(undealtForDeal) - cardIdx
+			toDeal := cmd.InitialDealCount
+			if toDeal > available {
+				toDeal = available
 			}
-			if _, err := DealCards(dealCmd, games, shoes, players); err != nil {
-				return nil, err
+			for i := 0; i < toDeal; i++ {
+				if err := shoes.DealCard(undealtForDeal[cardIdx].ID, p.ID); err != nil {
+					return nil, err
+				}
+				cardIdx++
 			}
 		}
 	}

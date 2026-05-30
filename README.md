@@ -115,6 +115,7 @@ is inlined into the bundle at `npm run build` time — set it before building.
 | `MIN_PLAYERS` | `2` | Default min players per game |
 | `MAX_PLAYERS` | `8` | Default max players per game |
 | `ADMIN_SEED_USERNAMES` | *(empty)* | Comma-separated list of usernames to seed as admins on first boot (e.g. `admin,ops`) |
+| `AUTO_END_GAME` | `true` | When `true`, game ends automatically when the shoe cannot serve a full round. Set to `false` to keep dealing partial hands until shoe is exhausted (demonstrates A7: 53rd deal returns empty, not error) |
 | `ENV` | `development` | Set to `production` for JSON logs |
 
 ### Frontend (`frontend/.env`)

@@ -21,10 +21,11 @@ type GameHandler struct {
 	shoes   shoe.Repository
 	users   user.Repository
 	hub     *ws.Hub
+	autoEnd bool
 }
 
-func NewGameHandler(games game.Repository, players player.Repository, shoes shoe.Repository, users user.Repository, hub *ws.Hub) *GameHandler {
-	return &GameHandler{games: games, players: players, shoes: shoes, users: users, hub: hub}
+func NewGameHandler(games game.Repository, players player.Repository, shoes shoe.Repository, users user.Repository, hub *ws.Hub, autoEnd bool) *GameHandler {
+	return &GameHandler{games: games, players: players, shoes: shoes, users: users, hub: hub, autoEnd: autoEnd}
 }
 
 type createGameRequest struct {
@@ -160,6 +161,7 @@ func (h *GameHandler) StartGame(c *gin.Context) {
 		GameID:           id,
 		DealerUserID:     dealerID,
 		InitialDealCount: req.InitialDealCount,
+		AutoEnd:          h.autoEnd,
 	}, h.games, h.players, h.shoes)
 	if err != nil {
 		status := http.StatusBadRequest
@@ -234,5 +236,10 @@ func (h *GameHandler) DeleteGame(c *gin.Context) {
 		c.JSON(status, gin.H{"error": err.Error()})
 		return
 	}
+	// Push all connected players off the table immediately.
+	h.hub.Broadcast(id.String(), ws.Message{
+		Event:   ws.EventGameEnded,
+		Payload: map[string]interface{}{"reason": "deleted"},
+	})
 	c.Status(http.StatusNoContent)
 }

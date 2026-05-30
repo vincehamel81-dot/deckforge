@@ -39,10 +39,10 @@ func NewRouter(
 	}
 
 	authH := handlers.NewAuthHandler(users, cfg.JWTSecret, jwtExpiry, cfg.MaxUsernameLength)
-	gameH := handlers.NewGameHandler(games, players, shoes, users, hub)
+	gameH := handlers.NewGameHandler(games, players, shoes, users, hub, cfg.AutoEndGame)
 	shoeH := handlers.NewShoeHandler(games, shoes, hub)
 	playerH := handlers.NewPlayerHandler(games, players, shoes, hub)
-	dealH := handlers.NewDealHandler(games, players, shoes, users, hub)
+	dealH := handlers.NewDealHandler(games, players, shoes, users, hub, cfg.AutoEndGame)
 	wsH := handlers.NewWSHandler(hub, games, cfg.JWTSecret)
 
 	auth := middleware.AuthMiddleware(cfg.JWTSecret)
