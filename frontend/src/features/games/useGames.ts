@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import apiClient from '../../lib/apiClient'
+import { useAuthStore } from '../auth/authStore'
 
 export interface Game {
   id: string
@@ -13,6 +14,7 @@ export interface Game {
 }
 
 export function useGames() {
+  const token = useAuthStore((s) => s.token)
   return useQuery<Game[]>({
     queryKey: ['games'],
     queryFn: async () => {
@@ -20,6 +22,7 @@ export function useGames() {
       return res.data.games ?? []
     },
     refetchInterval: 5000,
+    enabled: !!token,
   })
 }
 

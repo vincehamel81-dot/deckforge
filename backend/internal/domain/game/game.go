@@ -24,16 +24,16 @@ var (
 )
 
 type Game struct {
-	ID                  uuid.UUID
-	DealerUserID        uuid.UUID
-	Status              Status
-	DeckCount           int
-	MinPlayers          int
-	MaxPlayers          int
-	CurrentTurnPlayerID *uuid.UUID
-	CreatedAt           time.Time
-	StartedAt           *time.Time
-	FinishedAt          *time.Time
+	ID                  uuid.UUID  `json:"id"`
+	DealerUserID        uuid.UUID  `json:"dealerUserId"`
+	Status              Status     `json:"status"`
+	DeckCount           int        `json:"deckCount"`
+	MinPlayers          int        `json:"minPlayers"`
+	MaxPlayers          int        `json:"maxPlayers"`
+	CurrentTurnPlayerID *uuid.UUID `json:"currentTurnPlayerId,omitempty"`
+	CreatedAt           time.Time  `json:"createdAt"`
+	StartedAt           *time.Time `json:"startedAt,omitempty"`
+	FinishedAt          *time.Time `json:"finishedAt,omitempty"`
 }
 
 func New(dealerUserID uuid.UUID, deckCount, minPlayers, maxPlayers int) *Game {

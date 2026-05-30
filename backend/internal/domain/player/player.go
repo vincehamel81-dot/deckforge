@@ -7,12 +7,12 @@ import (
 )
 
 type Player struct {
-	ID        uuid.UUID
-	GameID    uuid.UUID
-	UserID    uuid.UUID
-	SeatOrder int
-	JoinedAt  time.Time
-	LeftAt    *time.Time
+	ID        uuid.UUID  `json:"id"`
+	GameID    uuid.UUID  `json:"gameId"`
+	UserID    uuid.UUID  `json:"userId"`
+	SeatOrder int        `json:"seatOrder"`
+	JoinedAt  time.Time  `json:"joinedAt"`
+	LeftAt    *time.Time `json:"leftAt,omitempty"`
 }
 
 func New(gameID, userID uuid.UUID, seatOrder int) *Player {

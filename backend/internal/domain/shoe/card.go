@@ -59,13 +59,13 @@ var AllFaces = []Face{
 }
 
 type ShoeCard struct {
-	ID             uuid.UUID
-	GameID         uuid.UUID
-	Suit           Suit
-	Face           Face
-	NumericValue   int
-	Position       int
-	HeldByPlayerID *uuid.UUID
+	ID             uuid.UUID  `json:"id"`
+	GameID         uuid.UUID  `json:"gameId"`
+	Suit           Suit       `json:"suit"`
+	Face           Face       `json:"face"`
+	NumericValue   int        `json:"numericValue"`
+	Position       int        `json:"position"`
+	HeldByPlayerID *uuid.UUID `json:"heldByPlayerId,omitempty"`
 }
 
 func (c *ShoeCard) IsDealt() bool {

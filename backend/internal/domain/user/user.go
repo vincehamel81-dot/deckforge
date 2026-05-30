@@ -14,10 +14,10 @@ const (
 )
 
 type User struct {
-	ID        uuid.UUID
-	Username  string
-	Role      Role
-	CreatedAt time.Time
+	ID        uuid.UUID `json:"id"`
+	Username  string    `json:"username"`
+	Role      Role      `json:"role"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 func New(username string) *User {
