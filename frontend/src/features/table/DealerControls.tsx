@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 interface DealerControlsProps {
   gameStatus: 'WAITING' | 'IN_PROGRESS'
@@ -16,32 +17,33 @@ export function DealerControls({
   gameStatus, playerCount, minPlayers,
   onAddDeck, onShuffle, onStartGame, onDealToAll, onEndGame, startGameError,
 }: DealerControlsProps) {
+  const { t } = useTranslation('table')
   const [dealCount, setDealCount] = useState(1)
   const [startDeal, setStartDeal] = useState(2)
   const [shuffleMsg, setShuffleMsg] = useState('')
 
   async function handleShuffle() {
     await onShuffle()
-    setShuffleMsg('✓ Shuffled!')
+    setShuffleMsg(t('dealer.shuffled'))
     setTimeout(() => setShuffleMsg(''), 2500)
   }
 
   return (
     <div style={{ background: '#1a2a40', borderRadius: '12px', padding: '1rem', border: '1px solid #e2c97e44' }}>
-      <h3 style={{ color: '#e2c97e', marginBottom: '1rem' }}>🎩 Dealer Controls</h3>
+      <h3 style={{ color: '#e2c97e', marginBottom: '1rem' }}>{t('dealer.title')}</h3>
       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
 
         {gameStatus === 'WAITING' && (
           <>
             <button onClick={onAddDeck} style={{ padding: '0.5rem 1rem', background: '#1a3a4a', color: '#60a5fa', border: '1px solid #60a5fa', borderRadius: '8px', cursor: 'pointer' }}>
-              + Add Deck
+              {t('dealer.addDeck')}
             </button>
             <button onClick={handleShuffle} style={{ padding: '0.5rem 1rem', background: '#1a2a4a', color: '#a78bfa', border: '1px solid #a78bfa', borderRadius: '8px', cursor: 'pointer' }}>
-              🔀 Shuffle
+              {t('dealer.shuffle')}
             </button>
             {shuffleMsg && <span style={{ color: '#a78bfa', fontSize: '0.85rem' }}>{shuffleMsg}</span>}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ color: '#7a9bb5', fontSize: '0.85rem' }}>Initial deal:</span>
+              <span style={{ color: '#7a9bb5', fontSize: '0.85rem' }}>{t('dealer.initialDeal')}</span>
               <input
                 type="number" min={0} max={10} value={startDeal}
                 onChange={e => setStartDeal(+e.target.value)}
@@ -50,11 +52,11 @@ export function DealerControls({
             </div>
             {playerCount < minPlayers ? (
               <span style={{ color: '#7a9bb5', fontSize: '0.85rem' }}>
-                ⏳ Waiting for players ({playerCount}/{minPlayers})
+                {t('dealer.waitingForPlayers', { current: playerCount, min: minPlayers })}
               </span>
             ) : (
               <button onClick={() => onStartGame(startDeal)} style={{ padding: '0.5rem 1.2rem', background: '#1a4a2a', color: '#4ade80', border: '1px solid #4ade80', borderRadius: '8px', cursor: 'pointer', fontWeight: 700 }}>
-                ▶ Start Game
+                {t('dealer.startGame')}
               </button>
             )}
             {startGameError && (
@@ -66,11 +68,11 @@ export function DealerControls({
         {gameStatus === 'IN_PROGRESS' && (
           <>
             <button onClick={handleShuffle} style={{ padding: '0.5rem 1rem', background: '#1a2a4a', color: '#a78bfa', border: '1px solid #a78bfa', borderRadius: '8px', cursor: 'pointer' }}>
-              🔀 Shuffle
+              {t('dealer.shuffle')}
             </button>
             {shuffleMsg && <span style={{ color: '#a78bfa', fontSize: '0.85rem' }}>{shuffleMsg}</span>}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ color: '#7a9bb5', fontSize: '0.85rem' }}>Deal cards:</span>
+              <span style={{ color: '#7a9bb5', fontSize: '0.85rem' }}>{t('dealer.dealCards')}</span>
               <input
                 type="number" min={1} max={10} value={dealCount}
                 onChange={e => setDealCount(Math.max(1, +e.target.value))}
@@ -78,10 +80,10 @@ export function DealerControls({
               />
             </div>
             <button onClick={() => onDealToAll(dealCount)} style={{ padding: '0.5rem 1rem', background: '#e2c97e', color: '#0f1a2e', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 700 }}>
-              🃏 Deal to All
+              {t('dealer.dealToAll')}
             </button>
             <button onClick={onEndGame} style={{ padding: '0.5rem 1rem', background: '#2a1a1a', color: '#f87171', border: '1px solid #f87171', borderRadius: '8px', cursor: 'pointer' }}>
-              ⏹ End Game
+              {t('dealer.endGame')}
             </button>
           </>
         )}

@@ -1,0 +1,18 @@
+{
+  "openTables": "Mesas abiertas",
+  "newTable": "+ Nueva Mesa",
+  "noTables": "No hay mesas abiertas. ¡Crea una!",
+  "loadingTables": "Cargando mesas...",
+  "return": "Volver",
+  "delete": "Eliminar",
+  "joinTable": "Unirse",
+  "players": "{{current}} / {{max}} jugadores",
+  "modal": {
+    "title": "Crear Nueva Mesa",
+    "deckCount": "Número de Mazos (1–8)",
+    "minPlayers": "Mín. jugadores",
+    "maxPlayers": "Máx. jugadores",
+    "cancel": "Cancelar",
+    "create": "Crear Mesa"
+  }
+}

@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from './authStore'
+import { LocaleSwitcher } from '../../shared/components/LocaleSwitcher'
 
 export default function LoginPage() {
+  const { t } = useTranslation(['common', 'auth'])
   const [username, setUsername] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -15,7 +18,7 @@ export default function LoginPage() {
     setError('')
 
     if (!/^[a-zA-Z0-9]+$/.test(username) || username.length < 3 || username.length > 15) {
-      setError('Username must be 3–15 letters or numbers, no spaces or symbols')
+      setError(t('auth:usernameError'))
       return
     }
 
@@ -24,7 +27,7 @@ export default function LoginPage() {
       await login(username)
       navigate('/', { replace: true })
     } catch {
-      setError('Could not sign in. Please try again.')
+      setError(t('auth:signinError'))
     } finally {
       setLoading(false)
     }
@@ -33,13 +36,16 @@ export default function LoginPage() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f1a2e' }}>
       <div style={{ background: '#1a2a40', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '360px', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
-        <h1 style={{ color: '#e2c97e', marginBottom: '0.25rem', textAlign: 'center', fontSize: '1.8rem' }}>♠ DeckForge</h1>
-        <p style={{ color: '#7a9bb5', textAlign: 'center', marginBottom: '1.5rem', fontSize: '0.9rem' }}>Enter your username to play</p>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.5rem' }}>
+          <LocaleSwitcher />
+        </div>
+        <h1 style={{ color: '#e2c97e', marginBottom: '0.25rem', textAlign: 'center', fontSize: '1.8rem' }}>{t('appName')}</h1>
+        <p style={{ color: '#7a9bb5', textAlign: 'center', marginBottom: '1.5rem', fontSize: '0.9rem' }}>{t('auth:subtitle')}</p>
 
         <form onSubmit={handleSubmit}>
           <input
             type="text"
-            placeholder="Username (e.g. alice42)"
+            placeholder={t('auth:usernamePlaceholder')}
             value={username}
             maxLength={15}
             onChange={(e) => setUsername(e.target.value)}
@@ -52,12 +58,12 @@ export default function LoginPage() {
             disabled={loading}
             style={{ width: '100%', marginTop: '1rem', padding: '0.75rem', borderRadius: '8px', background: '#e2c97e', color: '#0f1a2e', fontWeight: 700, fontSize: '1rem', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}
           >
-            {loading ? 'Joining...' : 'Enter the Table Room'}
+            {loading ? t('auth:joining') : t('auth:enterTableRoom')}
           </button>
         </form>
 
         <p style={{ color: '#4a6a8a', fontSize: '0.75rem', textAlign: 'center', marginTop: '1rem' }}>
-          New username = new account. No password required.
+          {t('auth:noPassword')}
         </p>
       </div>
     </div>

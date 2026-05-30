@@ -10,7 +10,7 @@ DeckForge is a card-game engine (shoe management, dealing, shuffling, scoring) b
 
 ## Commands
 
-### Backend (`DeckForge/backend/`)
+### Backend (`backend/`)
 
 ```bash
 go run ./cmd/server           # start server (SQLite, reads .env automatically)
@@ -23,7 +23,7 @@ go build ./cmd/server         # compile binary
 
 Copy `.env.example` to `.env` before first run. Minimum required: `JWT_SECRET`.
 
-### Frontend (`DeckForge/frontend/`)
+### Frontend (`frontend/`)
 
 ```bash
 npm run dev      # Vite dev server on :5173

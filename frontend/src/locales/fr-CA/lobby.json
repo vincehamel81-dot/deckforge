@@ -1,0 +1,20 @@
+{
+  "openTables": "Tables ouvertes",
+  "newTable": "+ Nouvelle Table",
+  "noTables": "Aucune table ouverte. Créez-en une!",
+  "loadingTables": "Chargement des tables...",
+  "return": "Retour",
+  "delete": "Supprimer",
+  "joinTable": "Rejoindre",
+  "decks_one": "{{count}} sabot · {{total}} cartes",
+  "decks_other": "{{count}} sabots · {{total}} cartes",
+  "players": "{{current}} / {{max}} joueurs",
+  "modal": {
+    "title": "Créer une Nouvelle Table",
+    "deckCount": "Nombre de Sabots (1–8)",
+    "minPlayers": "Joueurs min.",
+    "maxPlayers": "Joueurs max.",
+    "cancel": "Annuler",
+    "create": "Créer la Table"
+  }
+}

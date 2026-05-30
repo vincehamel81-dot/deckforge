@@ -1,0 +1,24 @@
+{
+  "openTables": "Open Tables",
+  "newTable": "+ New Table",
+  "noTables": "No open tables yet. Create one!",
+  "loadingTables": "Loading tables...",
+  "orphanWarning": "You have an active table ({{status}}) — return to it or delete it before joining another.",
+  "return": "Return",
+  "delete": "Delete",
+  "joinTable": "Join Table",
+  "decks_one": "{{count}} deck · {{total}} cards",
+  "decks_other": "{{count}} decks · {{total}} cards",
+  "players": "{{current}} / {{max}} players",
+  "dealerLabel": "🎩 {{name}}",
+  "confirmLeaveDealer": "You are the dealer. Leaving will close this table for everyone and delete it. Proceed?",
+  "confirmLeavePlayer": "Leave this table? Your cards will be returned to the shoe.",
+  "modal": {
+    "title": "Create New Table",
+    "deckCount": "Number of Decks (1–8)",
+    "minPlayers": "Min Players",
+    "maxPlayers": "Max Players",
+    "cancel": "Cancel",
+    "create": "Create Table"
+  }
+}

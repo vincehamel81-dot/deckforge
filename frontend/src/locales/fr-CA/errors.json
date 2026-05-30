@@ -1,0 +1,8 @@
+{
+  "COULD_NOT_START": "Impossible de démarrer la partie.",
+  "COULD_NOT_SIGNIN": "Connexion impossible. Veuillez réessayer.",
+  "GAME_NOT_FOUND": "Cette table n'existe plus.",
+  "NOT_ENOUGH_PLAYERS": "Pas assez de joueurs pour démarrer.",
+  "SHOE_EMPTY": "Le sabot est vide — ajoutez un sabot d'abord.",
+  "UNKNOWN": "Une erreur s'est produite. Veuillez réessayer."
+}

@@ -1,0 +1,23 @@
+{
+  "tableClosed": "Mesa Cerrada",
+  "tableClosedMessage": "El crupier cerró esta mesa.",
+  "hand": {
+    "noCards": "Sin cartas"
+  },
+  "dealer": {
+    "startGame": "▶ Iniciar Partida",
+    "endGame": "⏹ Terminar Partida",
+    "dealToAll": "🃏 Repartir a Todos"
+  },
+  "leaderboard": {
+    "title": "Jugadores",
+    "noPlayers": "Sin jugadores"
+  },
+  "result": {
+    "gameOver": "Juego Terminado",
+    "draw": "Empate — {{players}} — {{score}} pts",
+    "winner": "Ganador: {{player}} — {{score}} pts",
+    "finalStandings": "Clasificación Final",
+    "yourFinalHand": "Tu mano final ({{value}} pts)"
+  }
+}

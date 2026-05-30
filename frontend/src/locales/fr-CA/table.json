@@ -1,0 +1,55 @@
+{
+  "tableCreatedBy": "Table créée par {{dealer}}",
+  "tableClosed": "Table Fermée",
+  "tableClosedMessage": "Le croupier a fermé cette table.",
+  "loadingTable": "Chargement de la table...",
+  "loadingResults": "Chargement des résultats…",
+  "shoe": {
+    "title": "🃏 État du Sabot",
+    "checkShoe": "Vérifier Sabot",
+    "hideShoe": "Masquer Sabot",
+    "checking": "Vérification…",
+    "total": "Total :",
+    "remaining": "Restant :",
+    "drawsLeft": "Tirages restants :",
+    "decks": "Sabots :",
+    "undealtBySuit": "Cartes non distribuées par couleur",
+    "hearts": "Cœurs",
+    "spades": "Piques",
+    "clubs": "Trèfles",
+    "diamonds": "Carreaux",
+    "exhausted": "⚠ Sabot épuisé — aucune carte restante. Terminez la partie pour voir le classement final.",
+    "lowCards_one": "⚠ Seulement {{count}} carte restante — pas assez pour un tour complet.",
+    "lowCards_other": "⚠ Seulement {{count}} cartes restantes — pas assez pour un tour complet."
+  },
+  "hand": {
+    "title": "🤲 Votre Main",
+    "pts": "({{value}} pts)",
+    "noCards": "Aucune carte"
+  },
+  "dealer": {
+    "title": "🎩 Contrôles du Croupier",
+    "addDeck": "+ Ajouter Sabot",
+    "shuffle": "🔀 Mélanger",
+    "shuffled": "✓ Mélangé!",
+    "initialDeal": "Distribution initiale :",
+    "dealCards": "Distribuer :",
+    "waitingForPlayers": "⏳ En attente de joueurs ({{current}}/{{min}})",
+    "startGame": "▶ Démarrer la Partie",
+    "dealToAll": "🃏 Distribuer à Tous",
+    "endGame": "⏹ Terminer la Partie"
+  },
+  "leaderboard": {
+    "title": "Joueurs",
+    "kick": "exclure",
+    "noPlayers": "Aucun joueur"
+  },
+  "result": {
+    "gameOver": "Partie Terminée",
+    "draw": "Égalité — {{players}} — {{score}} pts",
+    "winner": "Gagnant : {{player}} — {{score}} pts",
+    "finalStandings": "Classement Final",
+    "yourFinalHand": "Votre main finale ({{value}} pts)",
+    "ptsCards": "{{pts}} pts · {{cards}} cartes"
+  }
+}

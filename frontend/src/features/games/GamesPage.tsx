@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useRequireAuth } from '../../shared/hooks/useRequireAuth'
 import { useAuthStore } from '../auth/authStore'
 import { useGames, useCreateGame, useJoinGame, useDeleteGame } from './useGames'
+import { LocaleSwitcher } from '../../shared/components/LocaleSwitcher'
 
 const s = {
   page: { minHeight: '100vh', background: '#0f1a2e', color: '#e2e8f0', padding: '2rem' },
@@ -28,6 +30,7 @@ function statusColor(status: string) {
 
 export default function GamesPage() {
   const authed = useRequireAuth()
+  const { t } = useTranslation(['common', 'lobby'])
   const user = useAuthStore((s) => s.user)
   const logout = useAuthStore((s) => s.logout)
   const navigate = useNavigate()
@@ -40,7 +43,6 @@ export default function GamesPage() {
 
   const openGames = games?.filter(g => g.status !== 'FINISHED') ?? []
 
-  // Table the current user created that is still active (they left but it's orphaned)
   const myOrphanedTable = openGames.find(g => g.dealerUserId === user?.id)
   const [form, setForm] = useState({ deckCount: 2, minPlayers: 2, maxPlayers: 8 })
 
@@ -49,46 +51,47 @@ export default function GamesPage() {
   return (
     <div style={s.page}>
       <div style={s.header}>
-        <span style={s.title}>♠ DeckForge</span>
+        <span style={s.title}>{t('appName')}</span>
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
           <span style={{ color: '#7a9bb5' }}>👤 {user?.username}</span>
-          <button style={{ ...s.btn, ...s.btnOutline }} onClick={() => { logout(); navigate('/login') }}>Logout</button>
+          <LocaleSwitcher />
+          <button style={{ ...s.btn, ...s.btnOutline }} onClick={() => { logout(); navigate('/login') }}>{t('logout')}</button>
         </div>
       </div>
 
       {myOrphanedTable && (
         <div style={{ background: '#1a2a1a', border: '1px solid #4ade8088', borderRadius: '10px', padding: '1rem 1.25rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
-          <span style={{ color: '#4ade80' }}>⚠ You have an active table ({myOrphanedTable.status}) — return to it or delete it before joining another.</span>
+          <span style={{ color: '#4ade80' }}>⚠ {t('lobby:orphanWarning', { status: myOrphanedTable.status })}</span>
           <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
-            <button style={{ ...s.btn, ...s.btnGold }} onClick={() => navigate(`/table/${myOrphanedTable.id}`)}>Return</button>
-            <button style={{ ...s.btn, padding: '0.5rem 0.9rem', background: 'transparent', color: '#f87171', border: '1px solid #f87171' }} onClick={() => deleteGame.mutate(myOrphanedTable.id)}>Delete</button>
+            <button style={{ ...s.btn, ...s.btnGold }} onClick={() => navigate(`/table/${myOrphanedTable.id}`)}>{t('lobby:return')}</button>
+            <button style={{ ...s.btn, padding: '0.5rem 0.9rem', background: 'transparent', color: '#f87171', border: '1px solid #f87171' }} onClick={() => deleteGame.mutate(myOrphanedTable.id)}>{t('lobby:delete')}</button>
           </div>
         </div>
       )}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <h2 style={{ color: '#7a9bb5', fontWeight: 400, margin: 0 }}>Open Tables</h2>
-        <button style={{ ...s.btn, ...s.btnGold }} onClick={() => setShowModal(true)}>+ New Table</button>
+        <h2 style={{ color: '#7a9bb5', fontWeight: 400, margin: 0 }}>{t('lobby:openTables')}</h2>
+        <button style={{ ...s.btn, ...s.btnGold }} onClick={() => setShowModal(true)}>{t('lobby:newTable')}</button>
       </div>
 
-      {isLoading && <p style={{ color: '#4a6a8a' }}>Loading tables...</p>}
+      {isLoading && <p style={{ color: '#4a6a8a' }}>{t('lobby:loadingTables')}</p>}
       {!isLoading && openGames.length === 0 && (
-        <p style={{ color: '#4a6a8a' }}>No open tables yet. Create one!</p>
+        <p style={{ color: '#4a6a8a' }}>{t('lobby:noTables')}</p>
       )}
 
       <div style={s.grid}>
         {openGames.map(game => (
           <div key={game.id} style={s.card}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-              <span style={{ color: '#e2c97e', fontWeight: 600 }}>🎩 {game.dealerUsername}</span>
+              <span style={{ color: '#e2c97e', fontWeight: 600 }}>{t('lobby:dealerLabel', { name: game.dealerUsername })}</span>
               <span style={{ ...s.badge, ...statusColor(game.status) }}>{game.status}</span>
             </div>
             <div style={{ color: '#4a6a8a', fontSize: '0.75rem', marginBottom: '0.75rem' }}>
               {new Date(game.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </div>
             <div style={{ color: '#7a9bb5', fontSize: '0.85rem', lineHeight: 1.8 }}>
-              <div>🃏 {game.deckCount} deck{game.deckCount !== 1 ? 's' : ''} · {game.deckCount * 52} cards</div>
-              <div>👥 {game.playerCount} / {game.maxPlayers} players</div>
+              <div>🃏 {t('lobby:decks', { count: game.deckCount, total: game.deckCount * 52 })}</div>
+              <div>👥 {t('lobby:players', { current: game.playerCount, max: game.maxPlayers })}</div>
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
               <button
@@ -96,7 +99,7 @@ export default function GamesPage() {
                 style={{ ...s.btn, ...s.btnGold, flex: 1, opacity: myOrphanedTable ? 0.4 : 1, cursor: myOrphanedTable ? 'not-allowed' : 'pointer' }}
                 onClick={() => !myOrphanedTable && joinGame.mutate(game.id)}
               >
-                Join Table
+                {t('lobby:joinTable')}
               </button>
               {isAdmin && (
                 <button
@@ -115,21 +118,21 @@ export default function GamesPage() {
       {showModal && (
         <div style={s.modal}>
           <div style={s.modalBox}>
-            <h2 style={{ color: '#e2c97e', marginBottom: '1rem' }}>Create New Table</h2>
-            <label style={s.label}>Number of Decks (1–8)</label>
+            <h2 style={{ color: '#e2c97e', marginBottom: '1rem' }}>{t('lobby:modal.title')}</h2>
+            <label style={s.label}>{t('lobby:modal.deckCount')}</label>
             <input type="number" min={1} max={8} value={form.deckCount} style={s.input}
               onChange={e => setForm({ ...form, deckCount: +e.target.value })} />
-            <label style={s.label}>Min Players</label>
+            <label style={s.label}>{t('lobby:modal.minPlayers')}</label>
             <input type="number" min={2} max={form.maxPlayers} value={form.minPlayers} style={s.input}
               onChange={e => setForm({ ...form, minPlayers: +e.target.value })} />
-            <label style={s.label}>Max Players</label>
+            <label style={s.label}>{t('lobby:modal.maxPlayers')}</label>
             <input type="number" min={form.minPlayers} max={8} value={form.maxPlayers} style={s.input}
               onChange={e => setForm({ ...form, maxPlayers: +e.target.value })} />
             <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}>
-              <button style={{ ...s.btn, ...s.btnOutline, flex: 1 }} onClick={() => setShowModal(false)}>Cancel</button>
+              <button style={{ ...s.btn, ...s.btnOutline, flex: 1 }} onClick={() => setShowModal(false)}>{t('lobby:modal.cancel')}</button>
               <button style={{ ...s.btn, ...s.btnGold, flex: 1 }}
                 onClick={() => { createGame.mutate(form); setShowModal(false) }}>
-                Create Table
+                {t('lobby:modal.create')}
               </button>
             </div>
           </div>

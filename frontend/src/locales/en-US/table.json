@@ -1,0 +1,55 @@
+{
+  "tableCreatedBy": "Table created by {{dealer}}",
+  "tableClosed": "Table Closed",
+  "tableClosedMessage": "The dealer closed this table.",
+  "loadingTable": "Loading table...",
+  "loadingResults": "Loading results…",
+  "shoe": {
+    "title": "🃏 Shoe Status",
+    "checkShoe": "Check Shoe",
+    "hideShoe": "Hide Shoe",
+    "checking": "Checking…",
+    "total": "Total:",
+    "remaining": "Remaining:",
+    "drawsLeft": "Draws left:",
+    "decks": "Decks:",
+    "undealtBySuit": "Undealt cards per suit",
+    "hearts": "Hearts",
+    "spades": "Spades",
+    "clubs": "Clubs",
+    "diamonds": "Diamonds",
+    "exhausted": "⚠ Shoe exhausted — no cards remaining. End the game to see final standings.",
+    "lowCards_one": "⚠ Only {{count}} card left — not enough for a full round. End the game or deal partial hands.",
+    "lowCards_other": "⚠ Only {{count}} cards left — not enough for a full round. End the game or deal partial hands."
+  },
+  "hand": {
+    "title": "🤲 Your Hand",
+    "pts": "({{value}} pts)",
+    "noCards": "No cards yet"
+  },
+  "dealer": {
+    "title": "🎩 Dealer Controls",
+    "addDeck": "+ Add Deck",
+    "shuffle": "🔀 Shuffle",
+    "shuffled": "✓ Shuffled!",
+    "initialDeal": "Initial deal:",
+    "dealCards": "Deal cards:",
+    "waitingForPlayers": "⏳ Waiting for players ({{current}}/{{min}})",
+    "startGame": "▶ Start Game",
+    "dealToAll": "🃏 Deal to All",
+    "endGame": "⏹ End Game"
+  },
+  "leaderboard": {
+    "title": "Players",
+    "kick": "kick",
+    "noPlayers": "No players yet"
+  },
+  "result": {
+    "gameOver": "Game Over",
+    "draw": "Draw — {{players}} — {{score}} pts",
+    "winner": "Winner: {{player}} — {{score}} pts",
+    "finalStandings": "Final Standings",
+    "yourFinalHand": "Your final hand ({{value}} pts)",
+    "ptsCards": "{{pts}} pts · {{cards}} cards"
+  }
+}
