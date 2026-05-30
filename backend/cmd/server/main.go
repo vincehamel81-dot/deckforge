@@ -47,18 +47,18 @@ func main() {
 	shoes := persistence.NewShoeRepo(db)
 	users := persistence.NewUserRepo(db)
 
-	if cfg.AdminSeedUsername != "" {
-		exists, err := users.ExistsByUsername(cfg.AdminSeedUsername)
+	for _, username := range cfg.AdminSeedUsernames {
+		exists, err := users.ExistsByUsername(username)
 		if err != nil {
-			log.Fatal().Err(err).Msg("failed to check admin seed user")
+			log.Fatal().Err(err).Str("username", username).Msg("failed to check admin seed user")
 		}
 		if !exists {
-			admin := user.New(cfg.AdminSeedUsername)
+			admin := user.New(username)
 			admin.Role = user.RoleAdmin
 			if err := users.Create(admin); err != nil {
-				log.Fatal().Err(err).Msg("failed to create admin seed user")
+				log.Fatal().Err(err).Str("username", username).Msg("failed to create admin seed user")
 			}
-			log.Info().Str("username", cfg.AdminSeedUsername).Msg("admin user seeded")
+			log.Info().Str("username", username).Msg("admin user seeded")
 		}
 	}
 

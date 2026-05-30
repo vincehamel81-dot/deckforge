@@ -35,7 +35,7 @@ export function useGameDetail(gameId: string) {
   return useQuery<GameDetail>({
     queryKey: ['game', gameId],
     queryFn: () => apiClient.get(`/games/${gameId}`).then(r => r.data),
-    refetchInterval: 5000,
+    refetchInterval: 3000,
   })
 }
 
@@ -43,7 +43,7 @@ export function useLeaderboard(gameId: string) {
   return useQuery<LeaderboardEntry[]>({
     queryKey: ['leaderboard', gameId],
     queryFn: () => apiClient.get(`/games/${gameId}/players`).then(r => r.data.leaderboard),
-    refetchInterval: 5000,
+    refetchInterval: 2000,
   })
 }
 
@@ -52,7 +52,7 @@ export function usePlayerHand(gameId: string, playerId: string | undefined) {
     queryKey: ['hand', playerId],
     queryFn: () => apiClient.get(`/games/${gameId}/players/${playerId}/hand`).then(r => r.data.cards),
     enabled: !!playerId,
-    refetchInterval: 5000,
+    refetchInterval: 2000,
   })
 }
 
@@ -100,7 +100,9 @@ export function useDealToAll(gameId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['leaderboard', gameId] })
       qc.invalidateQueries({ queryKey: ['game', gameId] })
-      qc.invalidateQueries({ queryKey: ['hand'] })
+      // refetchQueries forces an immediate re-fetch regardless of staleness,
+      // bypassing the polling timer so the dealing player sees their hand instantly.
+      qc.refetchQueries({ queryKey: ['hand'] })
     },
   })
 }
@@ -120,5 +122,13 @@ export function useLeaveGame(gameId: string) {
   return useMutation({
     mutationFn: (playerId: string) =>
       apiClient.delete(`/games/${gameId}/players/${playerId}`),
+  })
+}
+
+export function useDeleteGame(gameId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => apiClient.delete(`/games/${gameId}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['games'] }),
   })
 }

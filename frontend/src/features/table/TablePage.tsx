@@ -4,7 +4,7 @@ import { useRequireAuth } from '../../shared/hooks/useRequireAuth'
 import { useAuthStore } from '../auth/authStore'
 import {
   useGameDetail, useLeaderboard, usePlayerHand,
-  useStartGame, useEndGame, useShuffle, useDealToAll, useAddDeck, useLeaveGame,
+  useStartGame, useEndGame, useShuffle, useDealToAll, useAddDeck, useLeaveGame, useDeleteGame,
   type LeaderboardEntry,
 } from './useTable'
 
@@ -75,7 +75,7 @@ export default function TablePage() {
   const user = useAuthStore(s => s.user)
   const navigate = useNavigate()
 
-  const { data: detail, isLoading } = useGameDetail(gameId!)
+  const { data: detail, isLoading, isError } = useGameDetail(gameId!)
   const { data: leaderboard } = useLeaderboard(gameId!)
 
   // Find current user's player entry from leaderboard
@@ -88,12 +88,18 @@ export default function TablePage() {
   const dealToAll = useDealToAll(gameId!)
   const addDeck = useAddDeck(gameId!)
   const leaveGame = useLeaveGame(gameId!)
+  const deleteGame = useDeleteGame(gameId!)
 
   const [dealCount, setDealCount] = useState(1)
   const [startDeal, setStartDeal] = useState(2)
   const [shuffleMsg, setShuffleMsg] = useState('')
 
   if (!authed) return null
+  // Game was deleted by an admin or the dealer — redirect non-dealer players to lobby.
+  if (isError) {
+    navigate('/', { replace: true })
+    return null
+  }
   if (isLoading || !detail) return (
     <div style={{ minHeight: '100vh', background: '#0f1a2e', color: '#7a9bb5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       Loading table...
@@ -106,7 +112,9 @@ export default function TablePage() {
   const drawsRemaining = leaderboard && leaderboard.length > 0
     ? Math.floor(remainingCards / leaderboard.length)
     : 0
-  const displayDealerName = dealerUsername || `${game.dealerUserId.slice(0, 8)}…`
+  // Fall back to the leaderboard entry username in case the detail fetch missed it.
+  const dealerEntry = leaderboard?.find(e => e.userId === game.dealerUserId)
+  const displayDealerName = dealerUsername || dealerEntry?.username || `${game.dealerUserId.slice(0, 8)}…`
 
   if (game.status === 'FINISHED') {
     if (!leaderboard) {
@@ -183,6 +191,12 @@ export default function TablePage() {
           <button
             onClick={async () => {
               if (myEntry && game.status !== 'FINISHED') {
+                if (isDealer) {
+                  if (!window.confirm('You are the dealer. Leaving will close this table for everyone and delete it. Proceed?')) return
+                  await deleteGame.mutateAsync()
+                  navigate('/')
+                  return
+                }
                 if (!window.confirm('Leave this table? Your cards will be returned to the shoe.')) return
                 await leaveGame.mutateAsync(myEntry.playerId)
               }
@@ -301,7 +315,15 @@ export default function TablePage() {
                 dealerUserId={game.dealerUserId}
                 currentUserId={user?.id}
                 canKick={isAdmin}
-                onKick={(pid) => leaveGame.mutate(pid)}
+                onKick={(pid) => {
+                  const entry = leaderboard?.find(e => e.playerId === pid)
+                  if (entry?.userId === game.dealerUserId) {
+                    if (!window.confirm('This player is the dealer. Kicking them will delete the table for everyone. Proceed?')) return
+                    deleteGame.mutate(undefined, { onSuccess: () => navigate('/') })
+                  } else {
+                    leaveGame.mutate(pid)
+                  }
+                }}
               />
             : <p style={{ color: '#4a6a8a' }}>No players yet</p>
           }

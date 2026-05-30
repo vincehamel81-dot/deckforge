@@ -26,6 +26,21 @@ func NewDB(driver, dsn string) (*gorm.DB, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if driver == "sqlite" || driver == "" {
+		// SQLite does not support concurrent writers. A single connection serialises
+		// all access and prevents "database is locked" errors under concurrent HTTP requests.
+		sqlDB, err := db.DB()
+		if err != nil {
+			return nil, err
+		}
+		sqlDB.SetMaxOpenConns(1)
+		// WAL mode allows concurrent readers alongside the single writer.
+		db.Exec("PRAGMA journal_mode=WAL;")
+		// Wait up to 5 s instead of failing immediately on lock contention.
+		db.Exec("PRAGMA busy_timeout=5000;")
+	}
+
 	if err := db.AutoMigrate(
 		&UserModel{},
 		&GameModel{},
