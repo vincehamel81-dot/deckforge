@@ -424,6 +424,7 @@ records what was deferred and why, so the choices are transparent at the intervi
 | OIDC / Azure Entra ID authentication | Phase 6 | JWT with HMAC is structurally identical to JWT with OIDC — same claims, same middleware. The upgrade is one function swap in `auth_middleware.go`. |
 | Rate limiting on API endpoints | Phase 1+ | `@nestjs/throttler` equivalent: `ulule/limiter` or middleware wrapping. Not in the assignment spec. Documented as needed for production. |
 | Spectator role | Post-Phase 2 | Spectators can see game state but not hands. Straightforward RBAC addition once WebSocket is live. |
+| Multi-language / i18n | Phase 4 | All UI strings are currently hardcoded English. `react-i18next` with `en-US.json` / `fr-CA.json` (full BCP-47 culture codes, not `fr-FR`) adds i18n without touching component logic. GoTo serves North America — both cultures matter in production. Note: `fr-CA` not `fr-FR`; the distinction matters for date formats, currency, and legal content. |
 
 **Interview answer:**  
 > "I built what the assignment asked for and documented everything else. If you want to know why a

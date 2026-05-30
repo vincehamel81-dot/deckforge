@@ -83,6 +83,23 @@ is a Phase 5 item (see [ROADMAP.md](ROADMAP.md)).
 
 ---
 
+## Environments
+
+| | Local (native) | Docker Compose | Production |
+|---|---|---|---|
+| Backend | `go run ./cmd/server` | `docker compose up` | Azure Container App |
+| Frontend | `npm run dev` (Vite HMR) | Run natively alongside Docker | Azure Static Web App / nginx |
+| Database | SQLite (embedded) | SQLite or PostgreSQL (`--profile postgres`) | PostgreSQL (managed) |
+| API base URL | `http://localhost:8080` | `http://localhost:8080` | `https://<app>.azurecontainerapps.io` |
+| Auth | JWT (dev secret) | JWT (dev secret) | JWT → OIDC (Entra ID swap) |
+| Logs | ConsoleWriter (colored terminal) | Container stdout | Azure Monitor Logs |
+
+**Frontend per-environment:** `VITE_API_URL` in a `.env` file. Vite resolves in order:
+`.env.local` → `.env.development` / `.env.production` → `.env`. For production builds the URL
+is inlined into the bundle at `npm run build` time — set it before building.
+
+---
+
 ## Environment variables
 
 ### Backend (`backend/.env`)
@@ -97,7 +114,7 @@ is a Phase 5 item (see [ROADMAP.md](ROADMAP.md)).
 | `CORS_ORIGIN` | `http://localhost:5173` | Allowed frontend origin |
 | `MIN_PLAYERS` | `2` | Default min players per game |
 | `MAX_PLAYERS` | `8` | Default max players per game |
-| `ADMIN_SEED_USERNAME` | *(empty)* | Creates admin user on first boot |
+| `ADMIN_SEED_USERNAMES` | *(empty)* | Comma-separated list of usernames to seed as admins on first boot (e.g. `admin,ops`) |
 | `ENV` | `development` | Set to `production` for JSON logs |
 
 ### Frontend (`frontend/.env`)
@@ -149,6 +166,11 @@ go test ./...
 With the backend running, open [http://localhost:8080/swagger/index.html](http://localhost:8080/swagger/index.html).
 
 All endpoints are documented with request/response schemas and a "Try it out" button. Use the **Authorize** button (top right) to paste a JWT and test protected routes directly from the browser.
+
+**Importing into external tools:** The raw OpenAPI spec is served at
+`http://localhost:8080/swagger/doc.json`. Import this URL directly into Postman, Insomnia, or
+any OpenAPI-compatible client to get a fully-documented, runnable collection with no manual
+setup. Useful for scripted testing or sharing the API with teammates who prefer a GUI client.
 
 ---
 
