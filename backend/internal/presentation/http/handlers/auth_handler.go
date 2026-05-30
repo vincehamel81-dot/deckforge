@@ -25,9 +25,20 @@ func NewAuthHandler(users user.Repository, jwtSecret string, jwtExpiry time.Dura
 }
 
 type registerRequest struct {
-	Username string `json:"username" binding:"required"`
+	Username string `json:"username" binding:"required" example:"alice42"`
 }
 
+// Register godoc
+// @Summary Register a new user
+// @Description Creates an account with a username-only credential and returns a signed JWT.
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param body body registerRequest true "username (3–15 alphanumeric chars)"
+// @Success 201 {object} map[string]interface{} "token + user"
+// @Failure 400 {object} map[string]string "validation error"
+// @Failure 409 {object} map[string]string "username already taken"
+// @Router /auth/register [post]
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req registerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -67,6 +78,17 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	})
 }
 
+// Login godoc
+// @Summary Log in as an existing user
+// @Description Returns a fresh JWT for an existing username.
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param body body registerRequest true "username"
+// @Success 200 {object} map[string]interface{} "token + user"
+// @Failure 400 {object} map[string]string "bad request"
+// @Failure 404 {object} map[string]string "username not found"
+// @Router /auth/login [post]
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req registerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

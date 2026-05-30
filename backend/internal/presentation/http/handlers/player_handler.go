@@ -22,6 +22,17 @@ func NewPlayerHandler(games game.Repository, players player.Repository, shoes sh
 	return &PlayerHandler{games: games, players: players, shoes: shoes}
 }
 
+// JoinGame godoc
+// @Summary Join a game
+// @Description Adds the authenticated user as a player. If the game is IN_PROGRESS a catch-up deal is applied automatically.
+// @Tags players
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "game UUID"
+// @Success 201 {object} map[string]interface{} "player"
+// @Failure 400 {object} map[string]string "already in a game, game full, etc."
+// @Failure 404 {object} map[string]string "game not found"
+// @Router /games/{id}/players [post]
 func (h *PlayerHandler) JoinGame(c *gin.Context) {
 	claims := middleware.ClaimsFromContext(c)
 	gameID, err := uuid.Parse(c.Param("id"))
@@ -46,6 +57,17 @@ func (h *PlayerHandler) JoinGame(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"player": p})
 }
 
+// LeaveGame godoc
+// @Summary Remove a player from a game
+// @Description The player themselves, the dealer, or an admin may remove a player. All held cards are returned to the shoe.
+// @Tags players
+// @Security BearerAuth
+// @Param id  path string true "game UUID"
+// @Param pid path string true "player UUID"
+// @Success 204 "removed"
+// @Failure 403 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Router /games/{id}/players/{pid} [delete]
 func (h *PlayerHandler) LeaveGame(c *gin.Context) {
 	claims := middleware.ClaimsFromContext(c)
 	gameID, err := uuid.Parse(c.Param("id"))

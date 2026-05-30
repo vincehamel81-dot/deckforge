@@ -1,0 +1,647 @@
+basePath: /
+definitions:
+  handlers.addDeckRequest:
+    properties:
+      deckId:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+    type: object
+  handlers.createGameRequest:
+    properties:
+      deckCount:
+        example: 2
+        maximum: 8
+        minimum: 1
+        type: integer
+      maxPlayers:
+        example: 8
+        type: integer
+      minPlayers:
+        example: 2
+        type: integer
+    required:
+    - deckCount
+    type: object
+  handlers.dealRequest:
+    properties:
+      count:
+        example: 1
+        minimum: 1
+        type: integer
+    required:
+    - count
+    type: object
+  handlers.registerRequest:
+    properties:
+      username:
+        example: alice42
+        type: string
+    required:
+    - username
+    type: object
+  handlers.startGameRequest:
+    properties:
+      initialDealCount:
+        example: 2
+        type: integer
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: 'Card-game engine: shoe management, dealing, shuffling, scoring.'
+  title: DeckForge API
+  version: "1.0"
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Returns a fresh JWT for an existing username.
+      parameters:
+      - description: username
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.registerRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: token + user
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: username not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Log in as an existing user
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Creates an account with a username-only credential and returns
+        a signed JWT.
+      parameters:
+      - description: username (3–15 alphanumeric chars)
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.registerRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: token + user
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: validation error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: username already taken
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Register a new user
+      tags:
+      - auth
+  /decks:
+    post:
+      description: Generates a fresh deck UUID without writing to the database. Pass
+        this ID to POST /games/{id}/shoe/decks.
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: deck id
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Generate a deck UUID
+      tags:
+      - shoe
+  /games:
+    get:
+      description: Returns all non-finished games, optionally filtered by status.
+      parameters:
+      - description: WAITING or IN_PROGRESS
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: games array with playerCount and dealerUsername
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List games
+      tags:
+      - games
+    post:
+      consumes:
+      - application/json
+      description: Creates a new game. The caller becomes the dealer and auto-joins
+        as player seat 0. Initial shoe cards are added automatically for the requested
+        deck count.
+      parameters:
+      - description: game config
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.createGameRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: game + player
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a game
+      tags:
+      - games
+  /games/{id}:
+    delete:
+      description: Permanently removes a game. Allowed for the dealer of that game
+        or any admin.
+      parameters:
+      - description: game UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: no content
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete a game
+      tags:
+      - games
+    get:
+      description: Returns a game's current state, shoe status, and dealer username.
+      parameters:
+      - description: game UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: game + totalCards + remainingCards + dealerUsername
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get game detail
+      tags:
+      - games
+  /games/{id}/deal-round:
+    post:
+      consumes:
+      - application/json
+      description: 'Server-side atomic deal: deals N cards to every active player
+        in seat order. Eliminates N sequential HTTP round-trips and race conditions.
+        Auto-ends if shoe is exhausted.'
+      parameters:
+      - description: game UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: cards per player
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.dealRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: totalDealt + gameEnded
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Deal cards to all active players
+      tags:
+      - dealing
+  /games/{id}/end:
+    post:
+      description: Transitions an IN_PROGRESS game to FINISHED and returns the final
+        state.
+      parameters:
+      - description: game UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: updated game
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: End a game
+      tags:
+      - games
+  /games/{id}/players:
+    get:
+      description: Returns all active players sorted by total hand value descending.
+        Ties broken by seat order ascending. Scores are intentionally public during
+        play — cards remain private.
+      parameters:
+      - description: game UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: leaderboard array [{playerId, userId, username, seatOrder,
+            handValue, cardCount}]
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get the leaderboard
+      tags:
+      - players
+    post:
+      description: Adds the authenticated user as a player. If the game is IN_PROGRESS
+        a catch-up deal is applied automatically.
+      parameters:
+      - description: game UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: player
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: already in a game, game full, etc.
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: game not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Join a game
+      tags:
+      - players
+  /games/{id}/players/{pid}:
+    delete:
+      description: The player themselves, the dealer, or an admin may remove a player.
+        All held cards are returned to the shoe.
+      parameters:
+      - description: game UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: player UUID
+        in: path
+        name: pid
+        required: true
+        type: string
+      responses:
+        "204":
+          description: removed
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remove a player from a game
+      tags:
+      - players
+  /games/{id}/players/{pid}/deal:
+    post:
+      consumes:
+      - application/json
+      description: Deals N cards from the shoe to a specific player. If the shoe has
+        fewer than N cards remaining, all available cards are dealt (no error). Auto-ends
+        the game if the shoe can no longer serve a full round.
+      parameters:
+      - description: game UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: player UUID
+        in: path
+        name: pid
+        required: true
+        type: string
+      - description: number of cards
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.dealRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: dealtCount + gameEnded
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Deal cards to one player
+      tags:
+      - dealing
+  /games/{id}/players/{pid}/hand:
+    get:
+      description: Returns the cards held by a player. Only the player themselves
+        or an admin may view a hand.
+      parameters:
+      - description: game UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: player UUID
+        in: path
+        name: pid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: cards array
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get a player's hand
+      tags:
+      - dealing
+  /games/{id}/shoe/cards:
+    get:
+      description: Returns remaining card counts sorted by suit (hearts→spades→clubs→diamonds)
+        then face value descending (King→Ace).
+      parameters:
+      - description: game UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: cards array [{suit, value, count}]
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Undealt cards per suit and face value
+      tags:
+      - shoe
+  /games/{id}/shoe/decks:
+    post:
+      consumes:
+      - application/json
+      description: Inserts 52 ShoeCard rows into the game's shoe and increments Game.deckCount.
+        Only allowed while the game is WAITING.
+      parameters:
+      - description: game UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: deck id from POST /decks
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.addDeckRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: deckCount + totalCards + remainingCards
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Add a deck to the shoe
+      tags:
+      - shoe
+  /games/{id}/shoe/shuffle:
+    post:
+      description: Randomly permutes all undealt cards using Fisher-Yates (no library
+        shuffle). Can be called in WAITING or IN_PROGRESS. Returns 204 with no body.
+      parameters:
+      - description: game UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: shuffled
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Shuffle the shoe
+      tags:
+      - shoe
+  /games/{id}/shoe/suits:
+    get:
+      description: 'Returns the count of remaining (undealt) cards for each suit in
+        canonical order: hearts, spades, clubs, diamonds.'
+      parameters:
+      - description: game UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: suits array [{suit, count}]
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Undealt cards per suit
+      tags:
+      - shoe
+  /games/{id}/start:
+    post:
+      consumes:
+      - application/json
+      description: Transitions the game from WAITING to IN_PROGRESS and optionally
+        deals an initial hand to each player.
+      parameters:
+      - description: game UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: optional initial deal count per player
+        in: body
+        name: body
+        schema:
+          $ref: '#/definitions/handlers.startGameRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: updated game
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Start a game
+      tags:
+      - games
+securityDefinitions:
+  BearerAuth:
+    description: JWT obtained from POST /auth/register or POST /auth/login.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

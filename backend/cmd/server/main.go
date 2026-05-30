@@ -1,3 +1,13 @@
+// @title DeckForge API
+// @version 1.0
+// @description Card-game engine: shoe management, dealing, shuffling, scoring.
+// @host localhost:8080
+// @BasePath /
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description JWT obtained from POST /auth/register or POST /auth/login.
+
 package main
 
 import (
@@ -26,7 +36,7 @@ func main() {
 		log.Fatal().Msg("JWT_SECRET must be set")
 	}
 
-	db, err := persistence.NewDB(cfg.DatabaseURL)
+	db, err := persistence.NewDB(cfg.DBDriver, cfg.DatabaseURL)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to connect to database")
 	}

@@ -26,11 +26,22 @@ func NewGameHandler(games game.Repository, players player.Repository, shoes shoe
 }
 
 type createGameRequest struct {
-	DeckCount  int `json:"deckCount" binding:"required,min=1,max=8"`
-	MinPlayers int `json:"minPlayers"`
-	MaxPlayers int `json:"maxPlayers"`
+	DeckCount  int `json:"deckCount"  binding:"required,min=1,max=8" example:"2"`
+	MinPlayers int `json:"minPlayers" example:"2"`
+	MaxPlayers int `json:"maxPlayers" example:"8"`
 }
 
+// CreateGame godoc
+// @Summary Create a game
+// @Description Creates a new game. The caller becomes the dealer and auto-joins as player seat 0. Initial shoe cards are added automatically for the requested deck count.
+// @Tags games
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body createGameRequest true "game config"
+// @Success 201 {object} map[string]interface{} "game + player"
+// @Failure 400 {object} map[string]string
+// @Router /games [post]
 func (h *GameHandler) CreateGame(c *gin.Context) {
 	claims := middleware.ClaimsFromContext(c)
 	var req createGameRequest
@@ -59,6 +70,15 @@ func (h *GameHandler) CreateGame(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"game": result.Game, "player": result.Player})
 }
 
+// ListGames godoc
+// @Summary List games
+// @Description Returns all non-finished games, optionally filtered by status.
+// @Tags games
+// @Produce json
+// @Security BearerAuth
+// @Param status query string false "WAITING or IN_PROGRESS"
+// @Success 200 {object} map[string]interface{} "games array with playerCount and dealerUsername"
+// @Router /games [get]
 func (h *GameHandler) ListGames(c *gin.Context) {
 	statusStr := c.Query("status")
 	var filter *game.Status
@@ -74,6 +94,16 @@ func (h *GameHandler) ListGames(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"games": summaries})
 }
 
+// GetGame godoc
+// @Summary Get game detail
+// @Description Returns a game's current state, shoe status, and dealer username.
+// @Tags games
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "game UUID"
+// @Success 200 {object} map[string]interface{} "game + totalCards + remainingCards + dealerUsername"
+// @Failure 404 {object} map[string]string
+// @Router /games/{id} [get]
 func (h *GameHandler) GetGame(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -102,9 +132,21 @@ func (h *GameHandler) GetGame(c *gin.Context) {
 }
 
 type startGameRequest struct {
-	InitialDealCount int `json:"initialDealCount"`
+	InitialDealCount int `json:"initialDealCount" example:"2"`
 }
 
+// StartGame godoc
+// @Summary Start a game
+// @Description Transitions the game from WAITING to IN_PROGRESS and optionally deals an initial hand to each player.
+// @Tags games
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "game UUID"
+// @Param body body startGameRequest false "optional initial deal count per player"
+// @Success 200 {object} map[string]interface{} "updated game"
+// @Failure 400 {object} map[string]string
+// @Router /games/{id}/start [post]
 func (h *GameHandler) StartGame(c *gin.Context) {
 	claims := middleware.ClaimsFromContext(c)
 	id, _ := uuid.Parse(c.Param("id"))
@@ -131,6 +173,16 @@ func (h *GameHandler) StartGame(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"game": g})
 }
 
+// EndGame godoc
+// @Summary End a game
+// @Description Transitions an IN_PROGRESS game to FINISHED and returns the final state.
+// @Tags games
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "game UUID"
+// @Success 200 {object} map[string]interface{} "updated game"
+// @Failure 400 {object} map[string]string
+// @Router /games/{id}/end [post]
 func (h *GameHandler) EndGame(c *gin.Context) {
 	claims := middleware.ClaimsFromContext(c)
 	id, _ := uuid.Parse(c.Param("id"))
@@ -151,6 +203,17 @@ func (h *GameHandler) EndGame(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"game": g})
 }
 
+// DeleteGame godoc
+// @Summary Delete a game
+// @Description Permanently removes a game. Allowed for the dealer of that game or any admin.
+// @Tags games
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "game UUID"
+// @Success 204 "no content"
+// @Failure 403 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Router /games/{id} [delete]
 func (h *GameHandler) DeleteGame(c *gin.Context) {
 	claims := middleware.ClaimsFromContext(c)
 	id, _ := uuid.Parse(c.Param("id"))

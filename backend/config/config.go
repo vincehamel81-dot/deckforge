@@ -7,6 +7,7 @@ import (
 
 type Config struct {
 	Port              string
+	DBDriver          string
 	DatabaseURL       string
 	JWTSecret         string
 	JWTExpiry         string
@@ -20,6 +21,7 @@ type Config struct {
 func Load() *Config {
 	return &Config{
 		Port:              getEnv("PORT", "8080"),
+		DBDriver:          getEnv("DB_DRIVER", "sqlite"),
 		DatabaseURL:       getEnv("DATABASE_URL", "deckforge.db"),
 		JWTSecret:         getEnv("JWT_SECRET", ""),
 		JWTExpiry:         getEnv("JWT_EXPIRY", "24h"),

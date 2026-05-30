@@ -61,6 +61,28 @@ Open [http://localhost:5173](http://localhost:5173) in two tabs to simulate two 
 
 ---
 
+## Running with Docker
+
+```bash
+# Copy and configure
+cp backend/.env.example backend/.env
+# Edit backend/.env — set JWT_SECRET to any secret string
+
+# Build and run (SQLite, zero dependencies)
+docker compose up --build
+
+# With PostgreSQL instead (one env var swap)
+DB_DRIVER=postgres \
+DATABASE_URL="postgres://deckforge:deckforge@db:5432/deckforge?sslmode=disable" \
+docker compose --profile postgres up --build
+```
+
+The backend image is ~12 MB (Alpine + statically linked Go binary). The frontend is
+served separately by Vite for local development; a production Nginx frontend container
+is a Phase 5 item (see [ROADMAP.md](ROADMAP.md)).
+
+---
+
 ## Environment variables
 
 ### Backend (`backend/.env`)
@@ -68,7 +90,8 @@ Open [http://localhost:5173](http://localhost:5173) in two tabs to simulate two 
 | Variable | Default | Description |
 |---|---|---|
 | `PORT` | `8080` | HTTP server port |
-| `DATABASE_URL` | `deckforge.db` | SQLite file path |
+| `DB_DRIVER` | `sqlite` | Storage backend: `sqlite` or `postgres` |
+| `DATABASE_URL` | `deckforge.db` | SQLite file path or PostgreSQL DSN |
 | `JWT_SECRET` | *(required)* | HMAC signing secret |
 | `JWT_EXPIRY` | `24h` | Token lifetime |
 | `CORS_ORIGIN` | `http://localhost:5173` | Allowed frontend origin |
@@ -115,8 +138,17 @@ cd backend
 go test ./...
 ```
 
-9 tests cover: Fisher-Yates shuffle correctness, deck uniqueness, card numeric values,
-game state machine transitions.
+17 tests across two layers:
+- **Domain** (9): Fisher-Yates shuffle correctness, deck uniqueness, card numeric values, game state machine transitions
+- **Application integration** (8): all key invariants from `ARCHITECTURE.md` — 52-unique-card deal, 53rd deal blocked after shoe exhaustion, player removal returns cards to shoe, `remainingCards` never negative, auto-end fires on `remaining < activeCount` (not `≤`), decks sealed after game starts, FINISHED game rejects deal/shuffle/join, leaderboard sorted descending with seat-order tie-break
+
+---
+
+## API documentation (Swagger UI)
+
+With the backend running, open [http://localhost:8080/swagger/index.html](http://localhost:8080/swagger/index.html).
+
+All endpoints are documented with request/response schemas and a "Try it out" button. Use the **Authorize** button (top right) to paste a JWT and test protected routes directly from the browser.
 
 ---
 
@@ -211,3 +243,23 @@ Notable decisions:
   not a JWT claim — prevents global privilege escalation
 - **No state field on ShoeCard:** `held_by_player_id IS NULL` is the undealt state
 - **POST /decks returns UUID only:** A deck is a batch of 52 inserts, not a persisted entity
+
+---
+
+## Scope control
+
+The assignment says *"pretend this code will become a foundational part of a new product."*
+That framing drove some decisions that go beyond the raw API requirements:
+
+| Addition | Why it's here | Assignment scope? |
+|---|---|---|
+| JWT authentication | Identifies players; required for per-player hand privacy | Implied by multi-player spec |
+| Game state machine (WAITING → IN_PROGRESS → FINISHED) | Enforces sequencing rules (can't deal before start, can't add decks after start) | Implied by "game" semantics |
+| Admin role | Platform operator who can delete orphaned games | Reasonable extension, explicitly documented |
+| Clean architecture layers | Makes the repository interfaces swappable (SQLite → PostgreSQL → Redis) | Required by "foundational product" framing |
+| WebSocket / turn system (Phase 2+) | Documented in ROADMAP, not shipped — mentioned because GoTo is a real-time comms company | Out of scope for this submission |
+
+**What was explicitly NOT added:** real-time WebSocket events, turn-based mechanics, chat,
+SVG card graphics, OAuth/OIDC — all documented in [ROADMAP.md](ROADMAP.md) as Phase 2+.
+Phase 1 delivers exactly the 10 operations in the spec, with auth and state machine as the
+minimum viable foundation for a real product.

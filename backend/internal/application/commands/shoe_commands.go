@@ -51,6 +51,9 @@ func ShuffleShoe(cmd ShuffleShoeCommand, games game.Repository, shoes shoe.Repos
 	if g.DealerUserID != cmd.DealerUserID {
 		return ErrForbidden
 	}
+	if g.Status == game.StatusFinished {
+		return game.ErrAlreadyFinished
+	}
 
 	undealt, err := shoes.FindUndealtByGame(cmd.GameID)
 	if err != nil {

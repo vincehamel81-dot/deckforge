@@ -1,0 +1,47 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "${PORT:-8080}:8080"
+    environment:
+      PORT: "8080"
+      DB_DRIVER: "${DB_DRIVER:-sqlite}"
+      DATABASE_URL: "${DATABASE_URL:-/data/deckforge.db}"
+      JWT_SECRET: "${JWT_SECRET}"
+      JWT_EXPIRY: "${JWT_EXPIRY:-24h}"
+      CORS_ORIGIN: "${CORS_ORIGIN:-http://localhost:5173}"
+      MIN_PLAYERS: "${MIN_PLAYERS:-2}"
+      MAX_PLAYERS: "${MAX_PLAYERS:-8}"
+      MAX_USERNAME_LENGTH: "${MAX_USERNAME_LENGTH:-15}"
+      ADMIN_SEED_USERNAME: "${ADMIN_SEED_USERNAME:-}"
+      ENV: "${ENV:-production}"
+    volumes:
+      - deckforge_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Optional: swap the SQLite default for PostgreSQL.
+  # Run with: docker compose --profile postgres up
+  db:
+    image: postgres:16-alpine
+    profiles: ["postgres"]
+    environment:
+      POSTGRES_DB: deckforge
+      POSTGRES_USER: deckforge
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-deckforge}"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U deckforge"]
+      interval: 5s
+      retries: 5
+
+volumes:
+  deckforge_data:
+  postgres_data:
