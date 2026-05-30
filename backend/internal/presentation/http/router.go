@@ -12,6 +12,7 @@ import (
 	"github.com/vincehamel81-dot/deckforge/internal/domain/player"
 	"github.com/vincehamel81-dot/deckforge/internal/domain/shoe"
 	"github.com/vincehamel81-dot/deckforge/internal/domain/user"
+	ws "github.com/vincehamel81-dot/deckforge/internal/infrastructure/ws"
 	"github.com/vincehamel81-dot/deckforge/internal/presentation/http/handlers"
 	"github.com/vincehamel81-dot/deckforge/internal/presentation/http/middleware"
 )
@@ -22,6 +23,7 @@ func NewRouter(
 	players player.Repository,
 	shoes shoe.Repository,
 	users user.Repository,
+	hub *ws.Hub,
 ) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
@@ -37,10 +39,11 @@ func NewRouter(
 	}
 
 	authH := handlers.NewAuthHandler(users, cfg.JWTSecret, jwtExpiry, cfg.MaxUsernameLength)
-	gameH := handlers.NewGameHandler(games, players, shoes, users)
-	shoeH := handlers.NewShoeHandler(games, shoes)
-	playerH := handlers.NewPlayerHandler(games, players, shoes)
-	dealH := handlers.NewDealHandler(games, players, shoes, users)
+	gameH := handlers.NewGameHandler(games, players, shoes, users, hub)
+	shoeH := handlers.NewShoeHandler(games, shoes, hub)
+	playerH := handlers.NewPlayerHandler(games, players, shoes, hub)
+	dealH := handlers.NewDealHandler(games, players, shoes, users, hub)
+	wsH := handlers.NewWSHandler(hub, games, cfg.JWTSecret)
 
 	auth := middleware.AuthMiddleware(cfg.JWTSecret)
 	dealer := middleware.DealerMiddleware(games)
@@ -75,6 +78,10 @@ func NewRouter(
 		g.POST("/:id/deal-round", dealer, dealH.DealRound)
 		g.GET("/:id/players/:pid/hand", dealH.GetPlayerHand)
 	}
+
+	// WebSocket outside the auth group — browsers cannot send Authorization headers
+	// on WS upgrades. The handler validates the JWT from ?token= itself.
+	r.GET("/games/:id/ws", wsH.ServeWS)
 
 	return r
 }

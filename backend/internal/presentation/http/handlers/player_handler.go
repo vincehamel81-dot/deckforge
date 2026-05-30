@@ -9,6 +9,7 @@ import (
 	"github.com/vincehamel81-dot/deckforge/internal/domain/game"
 	"github.com/vincehamel81-dot/deckforge/internal/domain/player"
 	"github.com/vincehamel81-dot/deckforge/internal/domain/shoe"
+	ws "github.com/vincehamel81-dot/deckforge/internal/infrastructure/ws"
 	"github.com/vincehamel81-dot/deckforge/internal/presentation/http/middleware"
 )
 
@@ -16,10 +17,11 @@ type PlayerHandler struct {
 	games   game.Repository
 	players player.Repository
 	shoes   shoe.Repository
+	hub     *ws.Hub
 }
 
-func NewPlayerHandler(games game.Repository, players player.Repository, shoes shoe.Repository) *PlayerHandler {
-	return &PlayerHandler{games: games, players: players, shoes: shoes}
+func NewPlayerHandler(games game.Repository, players player.Repository, shoes shoe.Repository, hub *ws.Hub) *PlayerHandler {
+	return &PlayerHandler{games: games, players: players, shoes: shoes, hub: hub}
 }
 
 // JoinGame godoc
@@ -54,6 +56,7 @@ func (h *PlayerHandler) JoinGame(c *gin.Context) {
 		c.JSON(status, gin.H{"error": err.Error()})
 		return
 	}
+	h.hub.Broadcast(gameID.String(), ws.Message{Event: ws.EventPlayerJoined})
 	c.JSON(http.StatusCreated, gin.H{"player": p})
 }
 
@@ -98,5 +101,6 @@ func (h *PlayerHandler) LeaveGame(c *gin.Context) {
 		c.JSON(status, gin.H{"error": err.Error()})
 		return
 	}
+	h.hub.Broadcast(gameID.String(), ws.Message{Event: ws.EventPlayerLeft})
 	c.Status(http.StatusNoContent)
 }

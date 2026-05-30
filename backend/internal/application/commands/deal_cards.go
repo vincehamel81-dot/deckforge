@@ -90,20 +90,25 @@ func DealRound(cmd DealRoundCommand, games game.Repository, shoes shoe.Repositor
 		return nil, err
 	}
 
+	// Fetch undealt cards once — not per player — to avoid N full table scans.
+	undealt, err := shoes.FindUndealtByGame(cmd.GameID)
+	if err != nil {
+		return nil, err
+	}
+
+	cardIdx := 0
 	totalDealt := 0
 	for _, p := range activePlayers {
-		undealt, err := shoes.FindUndealtByGame(cmd.GameID)
-		if err != nil {
-			return nil, err
-		}
+		available := len(undealt) - cardIdx
 		toDeal := cmd.Count
-		if toDeal > len(undealt) {
-			toDeal = len(undealt)
+		if toDeal > available {
+			toDeal = available
 		}
 		for i := 0; i < toDeal; i++ {
-			if err := shoes.DealCard(undealt[i].ID, p.ID); err != nil {
+			if err := shoes.DealCard(undealt[cardIdx].ID, p.ID); err != nil {
 				return nil, err
 			}
+			cardIdx++
 		}
 		totalDealt += toDeal
 	}

@@ -35,7 +35,7 @@ export function useGameDetail(gameId: string) {
   return useQuery<GameDetail>({
     queryKey: ['game', gameId],
     queryFn: () => apiClient.get(`/games/${gameId}`).then(r => r.data),
-    refetchInterval: 3000,
+    refetchInterval: 15000, // WS push handles real-time; polling is the fallback
   })
 }
 
@@ -43,7 +43,7 @@ export function useLeaderboard(gameId: string) {
   return useQuery<LeaderboardEntry[]>({
     queryKey: ['leaderboard', gameId],
     queryFn: () => apiClient.get(`/games/${gameId}/players`).then(r => r.data.leaderboard),
-    refetchInterval: 2000,
+    refetchInterval: 15000,
   })
 }
 
@@ -52,7 +52,7 @@ export function usePlayerHand(gameId: string, playerId: string | undefined) {
     queryKey: ['hand', playerId],
     queryFn: () => apiClient.get(`/games/${gameId}/players/${playerId}/hand`).then(r => r.data.cards),
     enabled: !!playerId,
-    refetchInterval: 2000,
+    refetchInterval: 15000,
   })
 }
 
@@ -71,7 +71,7 @@ export function useSuitCounts(gameId: string) {
   return useQuery<SuitCount[]>({
     queryKey: ['suits', gameId],
     queryFn: () => apiClient.get(`/games/${gameId}/shoe/suits`).then(r => r.data.suits),
-    refetchInterval: 2000,
+    refetchInterval: 15000,
   })
 }
 
@@ -79,7 +79,7 @@ export function useCardCounts(gameId: string) {
   return useQuery<CardCount[]>({
     queryKey: ['cards', gameId],
     queryFn: () => apiClient.get(`/games/${gameId}/shoe/cards`).then(r => r.data.cards),
-    refetchInterval: 2000,
+    refetchInterval: 15000,
   })
 }
 

@@ -11,6 +11,7 @@ import (
 	"github.com/vincehamel81-dot/deckforge/internal/domain/player"
 	"github.com/vincehamel81-dot/deckforge/internal/domain/shoe"
 	"github.com/vincehamel81-dot/deckforge/internal/domain/user"
+	ws "github.com/vincehamel81-dot/deckforge/internal/infrastructure/ws"
 	"github.com/vincehamel81-dot/deckforge/internal/presentation/http/middleware"
 )
 
@@ -19,10 +20,11 @@ type DealHandler struct {
 	players player.Repository
 	shoes   shoe.Repository
 	users   user.Repository
+	hub     *ws.Hub
 }
 
-func NewDealHandler(games game.Repository, players player.Repository, shoes shoe.Repository, users user.Repository) *DealHandler {
-	return &DealHandler{games: games, players: players, shoes: shoes, users: users}
+func NewDealHandler(games game.Repository, players player.Repository, shoes shoe.Repository, users user.Repository, hub *ws.Hub) *DealHandler {
+	return &DealHandler{games: games, players: players, shoes: shoes, users: users, hub: hub}
 }
 
 type dealRequest struct {
@@ -78,6 +80,10 @@ func (h *DealHandler) DealCards(c *gin.Context) {
 		c.JSON(status, gin.H{"error": err.Error()})
 		return
 	}
+	h.hub.Broadcast(gameID.String(), ws.Message{
+		Event:   ws.EventCardsDealt,
+		Payload: map[string]interface{}{"dealtCount": result.DealtCount, "gameEnded": result.GameEnded},
+	})
 	c.JSON(http.StatusOK, gin.H{
 		"dealtCount": result.DealtCount,
 		"gameEnded":  result.GameEnded,
@@ -126,6 +132,10 @@ func (h *DealHandler) DealRound(c *gin.Context) {
 		c.JSON(status, gin.H{"error": err.Error()})
 		return
 	}
+	h.hub.Broadcast(gameID.String(), ws.Message{
+		Event:   ws.EventCardsDealt,
+		Payload: map[string]interface{}{"totalDealt": result.DealtCount, "gameEnded": result.GameEnded},
+	})
 	c.JSON(http.StatusOK, gin.H{"totalDealt": result.DealtCount, "gameEnded": result.GameEnded})
 }
 

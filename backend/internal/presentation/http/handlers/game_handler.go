@@ -11,6 +11,7 @@ import (
 	"github.com/vincehamel81-dot/deckforge/internal/domain/player"
 	"github.com/vincehamel81-dot/deckforge/internal/domain/shoe"
 	"github.com/vincehamel81-dot/deckforge/internal/domain/user"
+	ws "github.com/vincehamel81-dot/deckforge/internal/infrastructure/ws"
 	"github.com/vincehamel81-dot/deckforge/internal/presentation/http/middleware"
 )
 
@@ -19,10 +20,11 @@ type GameHandler struct {
 	players player.Repository
 	shoes   shoe.Repository
 	users   user.Repository
+	hub     *ws.Hub
 }
 
-func NewGameHandler(games game.Repository, players player.Repository, shoes shoe.Repository, users user.Repository) *GameHandler {
-	return &GameHandler{games: games, players: players, shoes: shoes, users: users}
+func NewGameHandler(games game.Repository, players player.Repository, shoes shoe.Repository, users user.Repository, hub *ws.Hub) *GameHandler {
+	return &GameHandler{games: games, players: players, shoes: shoes, users: users, hub: hub}
 }
 
 type createGameRequest struct {
@@ -170,6 +172,7 @@ func (h *GameHandler) StartGame(c *gin.Context) {
 		c.JSON(status, gin.H{"error": err.Error()})
 		return
 	}
+	h.hub.Broadcast(id.String(), ws.Message{Event: ws.EventGameStarted})
 	c.JSON(http.StatusOK, gin.H{"game": g})
 }
 
@@ -200,6 +203,7 @@ func (h *GameHandler) EndGame(c *gin.Context) {
 		c.JSON(status, gin.H{"error": err.Error()})
 		return
 	}
+	h.hub.Broadcast(id.String(), ws.Message{Event: ws.EventGameEnded})
 	c.JSON(http.StatusOK, gin.H{"game": g})
 }
 

@@ -73,7 +73,7 @@ export function DealerControls({
               <span style={{ color: '#7a9bb5', fontSize: '0.85rem' }}>Deal cards:</span>
               <input
                 type="number" min={1} max={10} value={dealCount}
-                onChange={e => setDealCount(+e.target.value)}
+                onChange={e => setDealCount(Math.max(1, +e.target.value))}
                 style={{ width: '50px', padding: '0.4rem', background: '#0f1a2e', border: '1px solid #2d4a6a', borderRadius: '6px', color: '#e2e8f0', textAlign: 'center' }}
               />
             </div>

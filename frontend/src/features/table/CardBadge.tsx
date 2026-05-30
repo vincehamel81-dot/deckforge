@@ -1,10 +1,10 @@
-const SUIT_SYMBOL: Record<string, string> = {
+export const SUIT_SYMBOL: Record<string, string> = {
   HEARTS: '♥', SPADES: '♠', CLUBS: '♣', DIAMONDS: '♦',
 }
-const SUIT_COLOR: Record<string, string> = {
+export const SUIT_COLOR: Record<string, string> = {
   HEARTS: '#f87171', SPADES: '#e2e8f0', CLUBS: '#e2e8f0', DIAMONDS: '#f87171',
 }
-const FACE_LABEL: Record<string, string> = {
+export const FACE_LABEL: Record<string, string> = {
   ACE: 'A', TWO: '2', THREE: '3', FOUR: '4', FIVE: '5', SIX: '6',
   SEVEN: '7', EIGHT: '8', NINE: '9', TEN: '10', JACK: 'J', QUEEN: 'Q', KING: 'K',
 }

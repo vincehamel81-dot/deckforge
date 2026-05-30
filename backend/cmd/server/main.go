@@ -19,6 +19,7 @@ import (
 	"github.com/vincehamel81-dot/deckforge/config"
 	"github.com/vincehamel81-dot/deckforge/internal/domain/user"
 	"github.com/vincehamel81-dot/deckforge/internal/infrastructure/persistence"
+	ws "github.com/vincehamel81-dot/deckforge/internal/infrastructure/ws"
 	httpserver "github.com/vincehamel81-dot/deckforge/internal/presentation/http"
 )
 
@@ -62,7 +63,8 @@ func main() {
 		}
 	}
 
-	router := httpserver.NewRouter(cfg, games, players, shoes, users)
+	hub := ws.NewHub()
+	router := httpserver.NewRouter(cfg, games, players, shoes, users, hub)
 
 	log.Info().Str("port", cfg.Port).Msg("DeckForge listening")
 	if err := router.Run(":" + cfg.Port); err != nil {

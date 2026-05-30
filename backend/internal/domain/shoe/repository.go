@@ -3,15 +3,15 @@ package shoe
 import "github.com/google/uuid"
 
 type SuitCount struct {
-	Suit  Suit
-	Count int
+	Suit  Suit `json:"suit"`
+	Count int  `json:"count"`
 }
 
 type CardCount struct {
-	Suit         Suit
-	Face         Face
-	NumericValue int
-	Count        int
+	Suit         Suit `json:"suit"`
+	Face         Face `json:"face"`
+	NumericValue int  `json:"numericValue"`
+	Count        int  `json:"count"`
 }
 
 type Repository interface {

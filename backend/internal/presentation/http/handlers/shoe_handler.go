@@ -8,16 +8,18 @@ import (
 	"github.com/vincehamel81-dot/deckforge/internal/application/commands"
 	"github.com/vincehamel81-dot/deckforge/internal/domain/game"
 	"github.com/vincehamel81-dot/deckforge/internal/domain/shoe"
+	ws "github.com/vincehamel81-dot/deckforge/internal/infrastructure/ws"
 	"github.com/vincehamel81-dot/deckforge/internal/presentation/http/middleware"
 )
 
 type ShoeHandler struct {
 	games game.Repository
 	shoes shoe.Repository
+	hub   *ws.Hub
 }
 
-func NewShoeHandler(games game.Repository, shoes shoe.Repository) *ShoeHandler {
-	return &ShoeHandler{games: games, shoes: shoes}
+func NewShoeHandler(games game.Repository, shoes shoe.Repository, hub *ws.Hub) *ShoeHandler {
+	return &ShoeHandler{games: games, shoes: shoes, hub: hub}
 }
 
 // CreateDeck godoc
@@ -116,6 +118,7 @@ func (h *ShoeHandler) ShuffleShoe(c *gin.Context) {
 		c.JSON(status, gin.H{"error": err.Error()})
 		return
 	}
+	h.hub.Broadcast(gameID.String(), ws.Message{Event: ws.EventShoeShuffled})
 	c.Status(http.StatusNoContent)
 }
 

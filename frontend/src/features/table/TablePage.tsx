@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useRequireAuth } from '../../shared/hooks/useRequireAuth'
 import { useAuthStore } from '../auth/authStore'
@@ -5,7 +6,8 @@ import {
   useGameDetail, useLeaderboard, usePlayerHand, useSuitCounts, useCardCounts,
   useStartGame, useEndGame, useShuffle, useDealToAll, useAddDeck, useLeaveGame, useDeleteGame,
 } from './useTable'
-import { CardBadge } from './CardBadge'
+import { useGameSocket } from './useGameSocket'
+import { CardBadge, SUIT_SYMBOL, SUIT_COLOR, FACE_LABEL } from './CardBadge'
 import { Leaderboard } from './Leaderboard'
 import { GameResult } from './GameResult'
 import { DealerControls } from './DealerControls'
@@ -16,11 +18,14 @@ export default function TablePage() {
   const user = useAuthStore(s => s.user)
   const navigate = useNavigate()
 
+  useGameSocket(gameId!)
+
   const { data: detail, isLoading, isError } = useGameDetail(gameId!)
   const { data: leaderboard } = useLeaderboard(gameId!)
   const myEntry = leaderboard?.find(e => e.userId === user?.id)
   const { data: hand } = usePlayerHand(gameId!, myEntry?.playerId)
   const { data: suitCounts } = useSuitCounts(gameId!)
+  const [showShoeDetails, setShowShoeDetails] = useState(false)
   const { data: cardCounts } = useCardCounts(gameId!)
 
   const startGame = useStartGame(gameId!)
@@ -114,7 +119,15 @@ export default function TablePage() {
         <div>
           {/* Shoe status */}
           <div style={{ background: '#1a2a40', borderRadius: '12px', padding: '1rem', marginBottom: '1rem', border: '1px solid #2d4a6a' }}>
-            <h3 style={{ color: '#e2c97e', marginBottom: '0.75rem' }}>🃏 Shoe Status</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+              <h3 style={{ color: '#e2c97e', margin: 0 }}>🃏 Shoe Status</h3>
+              <button
+                onClick={() => setShowShoeDetails(v => !v)}
+                style={{ padding: '0.2rem 0.6rem', background: 'transparent', border: '1px solid #4a6a8a', borderRadius: '4px', color: '#7a9bb5', cursor: 'pointer', fontSize: '0.75rem' }}
+              >
+                {showShoeDetails ? 'Hide Details' : 'Check Shoe'}
+              </button>
+            </div>
             <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
               <div><span style={{ color: '#4a6a8a' }}>Total: </span><strong>{totalCards}</strong></div>
               <div><span style={{ color: '#4a6a8a' }}>Remaining: </span><strong style={{ color: remainingCards < 10 ? '#f87171' : '#4ade80' }}>{remainingCards}</strong></div>
@@ -125,12 +138,31 @@ export default function TablePage() {
               <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
                 {suitCounts.map(s => (
                   <span key={s.suit} style={{ fontSize: '0.85rem' }}>
-                    <span style={{ color: s.suit === 'HEARTS' || s.suit === 'DIAMONDS' ? '#f87171' : '#e2e8f0' }}>
-                      {s.suit === 'HEARTS' ? '♥' : s.suit === 'SPADES' ? '♠' : s.suit === 'CLUBS' ? '♣' : '♦'}
+                    <span style={{ color: SUIT_COLOR[s.suit] ?? '#e2e8f0' }}>
+                      {SUIT_SYMBOL[s.suit] ?? '?'}
                     </span>
                     {' '}<strong style={{ color: '#e2e8f0' }}>{s.count}</strong>
                   </span>
                 ))}
+              </div>
+            )}
+            {showShoeDetails && cardCounts && (
+              <div style={{ marginTop: '0.75rem', borderTop: '1px solid #2d4a6a', paddingTop: '0.75rem' }}>
+                <p style={{ color: '#4a6a8a', fontSize: '0.75rem', margin: '0 0 0.5rem' }}>Remaining cards by suit and value</p>
+                {(['HEARTS', 'SPADES', 'CLUBS', 'DIAMONDS'] as const).map(suit => {
+                  const cards = cardCounts.filter(c => c.suit === suit)
+                  if (cards.length === 0) return null
+                  return (
+                    <div key={suit} style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.4rem', alignItems: 'center' }}>
+                      <span style={{ color: SUIT_COLOR[suit], minWidth: '1rem' }}>{SUIT_SYMBOL[suit]}</span>
+                      {cards.map(c => (
+                        <span key={c.face} style={{ fontSize: '0.75rem', color: '#7a9bb5' }}>
+                          {FACE_LABEL[c.face] ?? c.face}×{c.count}
+                        </span>
+                      ))}
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
