@@ -56,11 +56,30 @@ export function usePlayerHand(gameId: string, playerId: string | undefined) {
   })
 }
 
+export interface SuitCount {
+  suit: string
+  count: number
+}
+
+export interface CardCount {
+  suit: string
+  face: string
+  count: number
+}
+
 export function useSuitCounts(gameId: string) {
-  return useQuery({
+  return useQuery<SuitCount[]>({
     queryKey: ['suits', gameId],
     queryFn: () => apiClient.get(`/games/${gameId}/shoe/suits`).then(r => r.data.suits),
-    refetchInterval: 5000,
+    refetchInterval: 2000,
+  })
+}
+
+export function useCardCounts(gameId: string) {
+  return useQuery<CardCount[]>({
+    queryKey: ['cards', gameId],
+    queryFn: () => apiClient.get(`/games/${gameId}/shoe/cards`).then(r => r.data.cards),
+    refetchInterval: 2000,
   })
 }
 
@@ -77,7 +96,10 @@ export function useEndGame(gameId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: () => apiClient.post(`/games/${gameId}/end`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['game', gameId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['game', gameId] })
+      qc.invalidateQueries({ queryKey: ['games'] })
+    },
   })
 }
 
@@ -88,6 +110,7 @@ export function useShuffle(gameId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['game', gameId] })
       qc.invalidateQueries({ queryKey: ['suits', gameId] })
+      qc.invalidateQueries({ queryKey: ['cards', gameId] })
     },
   })
 }
@@ -100,6 +123,8 @@ export function useDealToAll(gameId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['leaderboard', gameId] })
       qc.invalidateQueries({ queryKey: ['game', gameId] })
+      qc.invalidateQueries({ queryKey: ['suits', gameId] })
+      qc.invalidateQueries({ queryKey: ['cards', gameId] })
       // refetchQueries forces an immediate re-fetch regardless of staleness,
       // bypassing the polling timer so the dealing player sees their hand instantly.
       qc.refetchQueries({ queryKey: ['hand'] })

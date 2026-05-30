@@ -26,14 +26,14 @@ export const useAuthStore = create<AuthState>((set) => ({
   token: localStorage.getItem('token'),
 
   login: async (username: string) => {
-    // Try register first; fall back to login on 409 (username taken)
+    // Try login first; register automatically if the username doesn't exist yet (404).
     let response
     try {
-      response = await apiClient.post('/auth/register', { username })
+      response = await apiClient.post('/auth/login', { username })
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status
-      if (status === 409) {
-        response = await apiClient.post('/auth/login', { username })
+      if (status === 404) {
+        response = await apiClient.post('/auth/register', { username })
       } else {
         throw err
       }

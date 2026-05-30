@@ -38,10 +38,10 @@ export default function GamesPage() {
   const isAdmin = user?.role === 'admin'
   const [showModal, setShowModal] = useState(false)
 
+  const openGames = games?.filter(g => g.status !== 'FINISHED') ?? []
+
   // Table the current user created that is still active (they left but it's orphaned)
-  const myOrphanedTable = games?.find(
-    g => g.dealerUserId === user?.id && g.status !== 'FINISHED'
-  )
+  const myOrphanedTable = openGames.find(g => g.dealerUserId === user?.id)
   const [form, setForm] = useState({ deckCount: 2, minPlayers: 2, maxPlayers: 8 })
 
   if (!authed) return null
@@ -52,7 +52,6 @@ export default function GamesPage() {
         <span style={s.title}>♠ DeckForge</span>
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
           <span style={{ color: '#7a9bb5' }}>👤 {user?.username}</span>
-          <button style={{ ...s.btn, ...s.btnGold }} onClick={() => setShowModal(true)}>+ New Table</button>
           <button style={{ ...s.btn, ...s.btnOutline }} onClick={() => { logout(); navigate('/login') }}>Logout</button>
         </div>
       </div>
@@ -67,15 +66,18 @@ export default function GamesPage() {
         </div>
       )}
 
-      <h2 style={{ color: '#7a9bb5', marginBottom: '1rem', fontWeight: 400 }}>Open Tables</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <h2 style={{ color: '#7a9bb5', fontWeight: 400, margin: 0 }}>Open Tables</h2>
+        <button style={{ ...s.btn, ...s.btnGold }} onClick={() => setShowModal(true)}>+ New Table</button>
+      </div>
 
       {isLoading && <p style={{ color: '#4a6a8a' }}>Loading tables...</p>}
-      {!isLoading && (!games || games.length === 0) && (
+      {!isLoading && openGames.length === 0 && (
         <p style={{ color: '#4a6a8a' }}>No open tables yet. Create one!</p>
       )}
 
       <div style={s.grid}>
-        {games?.filter(g => g.status !== 'FINISHED').map(game => (
+        {openGames.map(game => (
           <div key={game.id} style={s.card}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
               <span style={{ color: '#e2c97e', fontWeight: 600 }}>🎩 {game.dealerUsername}</span>

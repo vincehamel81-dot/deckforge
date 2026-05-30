@@ -426,10 +426,6 @@ records what was deferred and why, so the choices are transparent at the intervi
 | Spectator role | Post-Phase 2 | Spectators can see game state but not hands. Straightforward RBAC addition once WebSocket is live. |
 | Multi-language / i18n | Phase 4 | All UI strings are currently hardcoded English. `react-i18next` with `en-US.json` / `fr-CA.json` (full BCP-47 culture codes, not `fr-FR`) adds i18n without touching component logic. GoTo serves North America — both cultures matter in production. Note: `fr-CA` not `fr-FR`; the distinction matters for date formats, currency, and legal content. |
 
-**Interview answer:**  
-> "I built what the assignment asked for and documented everything else. If you want to know why a
-> specific feature isn't here, look at ADR-015 — I made a conscious call on every one of them."
-
 ---
 
 ## Assumptions log
