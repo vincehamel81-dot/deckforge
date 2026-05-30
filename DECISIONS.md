@@ -37,6 +37,59 @@ unnecessary for a domain this size, and Go aligns better with GoTo's production 
 
 ---
 
+## ADR-002: i18n — i18next with namespace cascade and pre-merge cache
+
+**Status:** Accepted  
+**Date:** 2026-05-30
+
+**Context:**  
+The frontend needed internationalisation to demonstrate scalability for the GoTo WebVoice assignment.
+GoTo serves North America — en-US and fr-CA are both production-relevant. The architecture decision
+was whether to use a simple single-file approach or a namespace-based system, and how to handle
+the fallback cascade efficiently.
+
+**Decision:** `i18next` + `react-i18next` + `i18next-browser-languagedetector`.  
+Namespace-based source files (5 namespaces × 3 locales = 15 JSON files).  
+Pre-merge strategy: at module load time, each `{locale, namespace}` pair is deep-merged over the
+en-US base and cached in-memory + sessionStorage. All `t()` calls are O(1) memory lookups.
+
+**Alternatives considered:**
+- `react-intl` (FormatJS) — rejected: heavier API, ICU message syntax is verbose for a demo, no
+  built-in cascade strategy.
+- `LinguiJS` — rejected: requires a compile step (`lingui extract`/`compile`) which adds CI friction.
+- Single file per locale (`en-US.json`) — rejected: one large flat file is harder to navigate and
+  causes merge conflicts as the team grows.
+
+**Why namespace files:**  
+Each namespace maps to a feature area (`common`, `auth`, `lobby`, `table`, `errors`). A key's
+namespace is always known by convention — there is no ambiguity about which file contains `logout`
+(it's in `common`). Partial-override locales (fr-CA, es-MX) only need to define keys that differ
+from en-US; everything else is filled in by the pre-merge step.
+
+**Why pre-merge (not runtime fallback):**  
+i18next's built-in `fallbackLng` performs a cascade on every missing key. Pre-merging runs the
+cascade once per `{locale, namespace}` pair at startup and stores the fully-resolved object.
+Subsequent `t()` calls have zero fallback logic — they're plain JS property access on the merged object.
+The sessionStorage layer means a page reload for the same locale skips even the merge computation.
+
+**Language preference vs. merged content storage:**  
+Language preference (e.g. `"fr-CA"`) → `localStorage` (persists across sessions — UX intent).  
+Pre-merged locale objects → `sessionStorage` (cleared on browser close — content cache, not preference).  
+See ASSUMPTIONS A-005 for the long-term localStorage + version-hash migration path.
+
+**TypeScript safety:**  
+`src/types/i18n.d.ts` augments `i18next`'s `CustomTypeOptions` with resource types derived from the
+en-US canonical files. Unknown keys fail at compile time. en-US is the single source of truth for
+all key names.
+
+**Tradeoffs accepted:**
+- All locale files are bundled into the Vite build (no lazy-loading). Total payload is < 10 KB —
+  acceptable at this scale. See ASSUMPTIONS A-007 for the lazy-load upgrade path.
+- fr-CA and es-MX are partial translations — missing keys fall back to en-US silently. Documented
+  in ASSUMPTIONS A-005 as intentional for the demo scope.
+
+---
+
 ## ADR-003: Storage — SQLite default, PostgreSQL production path
 
 **Status:** Accepted  
@@ -411,20 +464,20 @@ records what was deferred and why, so the choices are transparent at the intervi
 
 | Feature | Phase | Reason for deferral |
 |---|---|---|
-| Real-time WebSocket events | Phase 2 | Requires hub goroutine, JWT upgrade, full broadcast subsystem. Polling covers Phase 1 needs adequately. |
-| Per-player turn timer (15 s auto-accept) | Phase 2 | Requires WebSocket to fire server-side timeout and push `turn_expired` to clients. Cannot be done purely over HTTP without polling. |
-| In-game chat | Phase 2 | WebSocket dependency. Separate message table + ephemeral channel. |
-| SVG card graphics | Phase 3 | Cards are correctly rendered as "A♥", "K♦", etc. Photorealistic or illustrated SVG assets are a visual polish concern, not an API concern. |
-| Frontend unit/component tests (Vitest) | Phase 4 | Backend invariants are covered by 17 integration tests. Frontend test value is highest on stable components; testing before the UX is finalized creates churn. |
-| Swagger/OpenAPI *(now done in Phase 1)* | ~~Phase 4~~ | Pulled forward because it took < 2 hours and significantly improves reviewer experience. |
-| Docker *(now done in Phase 1)* | ~~Phase 5~~ | Pulled forward for the same reason. |
-| CI/CD pipeline (GitHub Actions → GHCR) | Phase 5 | Would add ~30 minutes of value for the reviewer but zero functional value before submission. |
-| PostgreSQL *(now done in Phase 1)* | ~~Phase 5~~ | Pulled forward; `DB_DRIVER` env var switch took < 1 hour. |
-| Redis pub/sub for horizontal scaling | Phase 6 | Relevant only when running multiple backend instances behind a load balancer. SQLite + single-instance is correct for Phase 1. |
-| OIDC / Azure Entra ID authentication | Phase 6 | JWT with HMAC is structurally identical to JWT with OIDC — same claims, same middleware. The upgrade is one function swap in `auth_middleware.go`. |
-| Rate limiting on API endpoints | Phase 1+ | `@nestjs/throttler` equivalent: `ulule/limiter` or middleware wrapping. Not in the assignment spec. Documented as needed for production. |
-| Spectator role | Post-Phase 2 | Spectators can see game state but not hands. Straightforward RBAC addition once WebSocket is live. |
-| Multi-language / i18n | Phase 4 | All UI strings are currently hardcoded English. `react-i18next` with `en-US.json` / `fr-CA.json` (full BCP-47 culture codes, not `fr-FR`) adds i18n without touching component logic. GoTo serves North America — both cultures matter in production. Note: `fr-CA` not `fr-FR`; the distinction matters for date formats, currency, and legal content. |
+| Real-time WebSocket events *(shipped)* | ~~Phase 2~~ | Pulled forward. Hub goroutine + JWT-on-upgrade + 6 event types fully implemented. See ROADMAP Phase 2. |
+| Per-player turn timer (15 s auto-accept) | Phase 2 | Server-side goroutine per active game; requires turn order state machine first. |
+| In-game chat | Phase 2 | WebSocket hub already in place; needs ephemeral message table + chat event type. |
+| SVG card graphics | Phase 3 | Cards render correctly as "A♥", "K♦" text. SVG assets are visual polish, not API correctness. |
+| Frontend unit/component tests (Vitest) | Phase 4 | Backend invariants covered by 6 real-SQLite integration tests. Frontend tests most valuable on stable, finalized components. |
+| Swagger/OpenAPI *(shipped in Phase 1)* | ~~Phase 4~~ | Pulled forward; took < 2 hours and improves reviewer experience significantly. |
+| Docker *(shipped in Phase 1)* | ~~Phase 5~~ | Pulled forward for same reason. |
+| CI/CD pipeline (GitHub Actions → GHCR) | Phase 5 | ~30 min value for reviewer; zero functional value before demo submission. |
+| PostgreSQL *(shipped in Phase 1)* | ~~Phase 5~~ | `DB_DRIVER` env var switch took < 1 hour. |
+| Redis pub/sub for horizontal scaling | Phase 6 | Relevant only with multiple backend instances behind a load balancer. |
+| OIDC / Azure Entra ID authentication | Phase 6 | JWT with HMAC is structurally identical to JWT with OIDC — one function swap in `auth_middleware.go`. |
+| Rate limiting on API endpoints | Phase 5 | Not in assignment spec. Documented as production requirement. |
+| Spectator role | Post-Phase 2 | Straightforward RBAC addition once WebSocket turn order is live. |
+| Multi-language / i18n *(shipped)* | ~~Phase 4~~ | Shipped. `i18next` + `react-i18next`; en-US (canonical), fr-CA (full), es-MX (core); namespace cascade with sessionStorage merge cache. See ADR-002. |
 
 ---
 
