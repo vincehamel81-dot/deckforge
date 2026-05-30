@@ -97,9 +97,10 @@ func catchUpHandSize(activePlayers []*player.Player, newPlayerID uuid.UUID, shoe
 }
 
 type RemovePlayerCommand struct {
-	GameID    uuid.UUID
-	PlayerID  uuid.UUID
+	GameID          uuid.UUID
+	PlayerID        uuid.UUID
 	RequesterUserID uuid.UUID
+	IsAdmin         bool
 }
 
 func RemovePlayer(cmd RemovePlayerCommand, games game.Repository, players player.Repository, shoes shoe.Repository) error {
@@ -116,10 +117,10 @@ func RemovePlayer(cmd RemovePlayerCommand, games game.Repository, players player
 		return ErrPlayerNotFound
 	}
 
-	// Only the player themselves or the dealer can remove a player.
+	// Admins can remove anyone; otherwise only the dealer or the player themselves.
 	isDealerRemoving := g.DealerUserID.String() == cmd.RequesterUserID.String()
 	isPlayerLeaving := p.UserID.String() == cmd.RequesterUserID.String()
-	if !isDealerRemoving && !isPlayerLeaving {
+	if !cmd.IsAdmin && !isDealerRemoving && !isPlayerLeaving {
 		return ErrForbidden
 	}
 

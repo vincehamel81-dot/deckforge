@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useRequireAuth } from '../../shared/hooks/useRequireAuth'
 import { useAuthStore } from '../auth/authStore'
 import {
-  useGameDetail, useLeaderboard, usePlayerHand, useSuitCounts,
+  useGameDetail, useLeaderboard, usePlayerHand,
   useStartGame, useEndGame, useShuffle, useDealToAll, useAddDeck, useLeaveGame,
   type LeaderboardEntry,
 } from './useTable'
@@ -14,6 +14,10 @@ const SUIT_SYMBOL: Record<string, string> = {
 const SUIT_COLOR: Record<string, string> = {
   HEARTS: '#f87171', SPADES: '#e2e8f0', CLUBS: '#e2e8f0', DIAMONDS: '#f87171',
 }
+const FACE_LABEL: Record<string, string> = {
+  ACE: 'A', TWO: '2', THREE: '3', FOUR: '4', FIVE: '5', SIX: '6',
+  SEVEN: '7', EIGHT: '8', NINE: '9', TEN: '10', JACK: 'J', QUEEN: 'Q', KING: 'K',
+}
 
 function CardBadge({ suit, face }: { suit: string; face: string }) {
   return (
@@ -23,25 +27,42 @@ function CardBadge({ suit, face }: { suit: string; face: string }) {
       padding: '0.3rem 0.5rem', margin: '0.2rem', fontSize: '0.9rem', fontWeight: 700,
       color: SUIT_COLOR[suit] ?? '#e2e8f0', minWidth: '2.8rem',
     }}>
-      {face.slice(0, 1) === 'T' ? '10' : face[0]}{SUIT_SYMBOL[suit]}
+      {FACE_LABEL[face] ?? face}{SUIT_SYMBOL[suit]}
     </span>
   )
 }
 
-function Leaderboard({ entries, dealerUserId }: { entries: LeaderboardEntry[]; dealerUserId: string }) {
+function Leaderboard({
+  entries, dealerUserId, currentUserId, canKick, onKick,
+}: {
+  entries: LeaderboardEntry[]
+  dealerUserId: string
+  currentUserId: string | undefined
+  canKick: boolean
+  onKick: (playerId: string) => void
+}) {
   return (
     <div>
-      <h3 style={{ color: '#e2c97e', marginBottom: '0.5rem' }}>🏆 Leaderboard</h3>
-      {entries.map((e, i) => (
+      <h3 style={{ color: '#e2c97e', marginBottom: '0.75rem' }}>Players</h3>
+      {[...entries].sort((a, b) => a.seatOrder - b.seatOrder).map((e) => (
         <div key={e.playerId} style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           padding: '0.5rem 0.75rem', borderRadius: '8px', marginBottom: '0.4rem',
-          background: i === 0 ? '#1a3a20' : '#1a2a40', border: '1px solid #2d4a6a',
+          background: '#1a2a40', border: '1px solid #2d4a6a',
         }}>
-          <span style={{ color: i === 0 ? '#4ade80' : '#e2e8f0' }}>
-            #{i + 1} {e.username}{e.userId === dealerUserId ? ' 🎩' : ''}
+          <span style={{ color: '#e2e8f0' }}>
+            {e.username}
+            {e.userId === dealerUserId ? ' 🎩' : ''}
+            {e.userId === currentUserId ? ' (you)' : ''}
           </span>
-          <span style={{ color: '#e2c97e', fontWeight: 700 }}>{e.handValue} pts ({e.cardCount} cards)</span>
+          {canKick && e.userId !== currentUserId && (
+            <button
+              onClick={() => onKick(e.playerId)}
+              style={{ padding: '0.2rem 0.5rem', background: 'transparent', border: '1px solid #f87171', borderRadius: '4px', color: '#f87171', cursor: 'pointer', fontSize: '0.75rem' }}
+            >
+              kick
+            </button>
+          )}
         </div>
       ))}
     </div>
@@ -56,7 +77,6 @@ export default function TablePage() {
 
   const { data: detail, isLoading } = useGameDetail(gameId!)
   const { data: leaderboard } = useLeaderboard(gameId!)
-  const { data: suitCounts } = useSuitCounts(gameId!)
 
   // Find current user's player entry from leaderboard
   const myEntry = leaderboard?.find(e => e.userId === user?.id)
@@ -80,11 +100,67 @@ export default function TablePage() {
     </div>
   )
 
-  const { game, totalCards, remainingCards } = detail
+  const { game, totalCards, remainingCards, dealerUsername } = detail
   const isDealer = user?.id === game.dealerUserId
+  const isAdmin = user?.role === 'admin'
   const drawsRemaining = leaderboard && leaderboard.length > 0
     ? Math.floor(remainingCards / leaderboard.length)
     : 0
+  const displayDealerName = dealerUsername || `${game.dealerUserId.slice(0, 8)}…`
+
+  if (game.status === 'FINISHED') {
+    if (!leaderboard) {
+      return (
+        <div style={{ minHeight: '100vh', background: '#0f1a2e', color: '#7a9bb5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          Loading results…
+        </div>
+      )
+    }
+    const winner = leaderboard[0]
+    return (
+      <div style={{ minHeight: '100vh', background: '#0f1a2e', color: '#e2e8f0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+        <div style={{ background: '#1a2a40', borderRadius: '16px', padding: '2.5rem', width: '100%', maxWidth: '480px', border: '1px solid #e2c97e44', textAlign: 'center' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>🏆</div>
+          <h1 style={{ color: '#e2c97e', margin: '0 0 0.25rem' }}>Game Over</h1>
+          {winner && (
+            <p style={{ color: '#4ade80', marginBottom: '1.5rem' }}>
+              Winner: <strong>{winner.username}</strong> — {winner.handValue} pts
+            </p>
+          )}
+          <div style={{ textAlign: 'left', marginBottom: '1.5rem' }}>
+            <h3 style={{ color: '#7a9bb5', marginBottom: '0.75rem', fontWeight: 400 }}>Final Standings</h3>
+            {leaderboard.map((e, i) => (
+              <div key={e.playerId} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '0.5rem 0.75rem', borderRadius: '8px', marginBottom: '0.4rem',
+                background: i === 0 ? '#1a3a20' : '#0f1a2e', border: '1px solid #2d4a6a',
+              }}>
+                <span style={{ color: i === 0 ? '#4ade80' : '#e2e8f0' }}>
+                  #{i + 1} {e.username}{e.userId === game.dealerUserId ? ' 🎩' : ''}
+                  {e.userId === user?.id ? ' (you)' : ''}
+                </span>
+                <span style={{ color: '#e2c97e', fontWeight: 700 }}>{e.handValue} pts · {e.cardCount} cards</span>
+              </div>
+            ))}
+          </div>
+          {hand && hand.length > 0 && (
+            <div style={{ marginBottom: '1.5rem', textAlign: 'left' }}>
+              <h3 style={{ color: '#7a9bb5', marginBottom: '0.5rem', fontWeight: 400 }}>Your final hand ({myEntry?.handValue ?? 0} pts)</h3>
+              <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+                {hand.map(c => <CardBadge key={c.id} suit={c.suit} face={c.face} />)}
+              </div>
+            </div>
+          )}
+          <button
+            onClick={() => navigate('/')}
+            style={{ padding: '0.75rem 2rem', background: '#e2c97e', color: '#0f1a2e', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '1rem', cursor: 'pointer', width: '100%' }}
+          >
+            Return to Lobby
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: '#0f1a2e', color: '#e2e8f0', padding: '1.5rem' }}>
@@ -92,7 +168,9 @@ export default function TablePage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <div>
           <span style={{ color: '#e2c97e', fontWeight: 700, fontSize: '1.3rem' }}>♠ DeckForge</span>
-          <span style={{ color: '#4a6a8a', marginLeft: '1rem', fontSize: '0.85rem' }}>Table {gameId?.slice(0, 8)}…</span>
+          <span style={{ color: '#4a6a8a', marginLeft: '1rem', fontSize: '0.85rem' }}>
+            Table created by <span style={{ color: '#e2c97e' }}>{displayDealerName}</span>
+          </span>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           <span style={{
@@ -127,15 +205,6 @@ export default function TablePage() {
               <div><span style={{ color: '#4a6a8a' }}>Draws left: </span><strong style={{ color: '#e2c97e' }}>{drawsRemaining}</strong></div>
               <div><span style={{ color: '#4a6a8a' }}>Decks: </span><strong>{game.deckCount}</strong></div>
             </div>
-            {suitCounts && (
-              <div style={{ display: 'flex', gap: '1rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
-                {(suitCounts as { suit: string; count: number }[]).map(s => (
-                  <span key={s.suit} style={{ color: SUIT_COLOR[s.suit], fontSize: '0.9rem' }}>
-                    {SUIT_SYMBOL[s.suit]} {s.count}
-                  </span>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* Your hand */}
@@ -210,7 +279,7 @@ export default function TablePage() {
                         style={{ width: '50px', padding: '0.4rem', background: '#0f1a2e', border: '1px solid #2d4a6a', borderRadius: '6px', color: '#e2e8f0', textAlign: 'center' }} />
                     </div>
                     <button
-                      onClick={() => dealToAll.mutate({ playerIds: (leaderboard ?? []).map(e => e.playerId), count: dealCount })}
+                      onClick={() => dealToAll.mutate({ count: dealCount })}
                       style={{ padding: '0.5rem 1rem', background: '#e2c97e', color: '#0f1a2e', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 700 }}>
                       🃏 Deal to All
                     </button>
@@ -227,7 +296,13 @@ export default function TablePage() {
         {/* Sidebar: leaderboard */}
         <div style={{ background: '#1a2a40', borderRadius: '12px', padding: '1rem', border: '1px solid #2d4a6a', alignSelf: 'start' }}>
           {leaderboard && leaderboard.length > 0
-            ? <Leaderboard entries={leaderboard} dealerUserId={game.dealerUserId} />
+            ? <Leaderboard
+                entries={leaderboard}
+                dealerUserId={game.dealerUserId}
+                currentUserId={user?.id}
+                canKick={isAdmin}
+                onKick={(pid) => leaveGame.mutate(pid)}
+              />
             : <p style={{ color: '#4a6a8a' }}>No players yet</p>
           }
         </div>

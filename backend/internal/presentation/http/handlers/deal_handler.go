@@ -100,6 +100,39 @@ func (h *DealHandler) GetPlayerHand(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"cards": hand})
 }
 
+func (h *DealHandler) DealRound(c *gin.Context) {
+	claims := middleware.ClaimsFromContext(c)
+	gameID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid game id"})
+		return
+	}
+	var req dealRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "count is required and must be ≥ 1"})
+		return
+	}
+	dealerID, _ := uuid.Parse(claims.UserID)
+
+	result, err := commands.DealRound(commands.DealRoundCommand{
+		GameID:       gameID,
+		DealerUserID: dealerID,
+		Count:        req.Count,
+	}, h.games, h.shoes, h.players)
+	if err != nil {
+		status := http.StatusBadRequest
+		if err == commands.ErrGameNotFound {
+			status = http.StatusNotFound
+		}
+		if err == commands.ErrForbidden {
+			status = http.StatusForbidden
+		}
+		c.JSON(status, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"totalDealt": result.DealtCount, "gameEnded": result.GameEnded})
+}
+
 func (h *DealHandler) GetLeaderboard(c *gin.Context) {
 	gameID, err := uuid.Parse(c.Param("id"))
 	if err != nil {

@@ -64,6 +64,7 @@ func (h *PlayerHandler) LeaveGame(c *gin.Context) {
 		GameID:          gameID,
 		PlayerID:        playerID,
 		RequesterUserID: requesterID,
+		IsAdmin:         claims.Role == "admin",
 	}, h.games, h.players, h.shoes); err != nil {
 		status := http.StatusBadRequest
 		if err == commands.ErrGameNotFound || err == commands.ErrPlayerNotFound {

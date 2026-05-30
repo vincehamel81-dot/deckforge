@@ -49,10 +49,12 @@ func (r *playerRepo) FindByUserAndGame(userID, gameID uuid.UUID) (*player.Player
 
 func (r *playerRepo) FindActiveByUser(userID uuid.UUID) (*player.Player, error) {
 	var m PlayerModel
-	// Exclude players in FINISHED games — they should not block re-joining.
-	err := r.db.Joins("JOIN games ON games.id = players.game_id").
-		Where("players.user_id = ? AND players.left_at IS NULL AND games.status != 'FINISHED'", userID.String()).
-		First(&m).Error
+	// Subquery excludes players in FINISHED games so they can re-join after a game ends.
+	// (JOIN would cause SELECT * to overwrite players.id with games.id in the GORM scan.)
+	err := r.db.Where(
+		"user_id = ? AND left_at IS NULL AND game_id IN (SELECT id FROM games WHERE status != 'FINISHED')",
+		userID.String(),
+	).First(&m).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil

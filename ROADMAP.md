@@ -86,6 +86,7 @@ core engine.
 - [ ] **Turn countdown** — animated timer on the active player's seat; driven by `turn_timer_started.expiresAt`; clears on `turn_changed`
 - [ ] Animated card deal (CSS transition — card slides to player seat)
 - [ ] Toast notifications for game events
+- [ ] **In-game chat** — text messages scoped to a game; broadcast via the existing WebSocket hub; stored ephemerally (in-memory, not persisted); message format `{ "event": "chat", "payload": { "username", "message", "sentAt" } }`
 
 ---
 

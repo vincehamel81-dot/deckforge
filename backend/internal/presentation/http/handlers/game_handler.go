@@ -89,10 +89,15 @@ func (h *GameHandler) GetGame(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "game not found"})
 		return
 	}
+	dealerUsername := ""
+	if u, _ := h.users.FindByID(detail.Game.DealerUserID); u != nil {
+		dealerUsername = u.Username
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"game":           detail.Game,
 		"totalCards":     detail.TotalCards,
 		"remainingCards": detail.RemainingCards,
+		"dealerUsername": dealerUsername,
 	})
 }
 
@@ -131,7 +136,7 @@ func (h *GameHandler) EndGame(c *gin.Context) {
 	id, _ := uuid.Parse(c.Param("id"))
 	dealerID, _ := uuid.Parse(claims.UserID)
 
-	g, err := commands.EndGame(commands.EndGameCommand{GameID: id, DealerUserID: dealerID}, h.games, h.players)
+	g, err := commands.EndGame(commands.EndGameCommand{GameID: id, DealerUserID: dealerID}, h.games)
 	if err != nil {
 		status := http.StatusBadRequest
 		if err == commands.ErrGameNotFound {
@@ -151,7 +156,7 @@ func (h *GameHandler) DeleteGame(c *gin.Context) {
 	id, _ := uuid.Parse(c.Param("id"))
 	dealerID, _ := uuid.Parse(claims.UserID)
 
-	if err := commands.DeleteGame(commands.DeleteGameCommand{GameID: id, DealerUserID: dealerID}, h.games); err != nil {
+	if err := commands.DeleteGame(commands.DeleteGameCommand{GameID: id, DealerUserID: dealerID, IsAdmin: claims.Role == "admin"}, h.games); err != nil {
 		status := http.StatusBadRequest
 		if err == commands.ErrGameNotFound {
 			status = http.StatusNotFound

@@ -54,7 +54,7 @@ func NewRouter(
 		g.POST("", gameH.CreateGame)
 		g.GET("", gameH.ListGames)
 		g.GET("/:id", gameH.GetGame)
-		g.DELETE("/:id", dealer, gameH.DeleteGame)
+		g.DELETE("/:id", gameH.DeleteGame) // auth check in command (dealer or admin)
 		g.POST("/:id/start", dealer, gameH.StartGame)
 		g.POST("/:id/end", dealer, gameH.EndGame)
 
@@ -68,6 +68,7 @@ func NewRouter(
 		g.GET("/:id/players", dealH.GetLeaderboard)
 
 		g.POST("/:id/players/:pid/deal", dealer, dealH.DealCards)
+		g.POST("/:id/deal-round", dealer, dealH.DealRound)
 		g.GET("/:id/players/:pid/hand", dealH.GetPlayerHand)
 	}
 

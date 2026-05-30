@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useRequireAuth } from '../../shared/hooks/useRequireAuth'
 import { useAuthStore } from '../auth/authStore'
-import { useGames, useCreateGame, useJoinGame } from './useGames'
+import { useGames, useCreateGame, useJoinGame, useDeleteGame } from './useGames'
 
 const s = {
   page: { minHeight: '100vh', background: '#0f1a2e', color: '#e2e8f0', padding: '2rem' },
@@ -34,7 +34,14 @@ export default function GamesPage() {
   const { data: games, isLoading } = useGames()
   const createGame = useCreateGame()
   const joinGame = useJoinGame()
+  const deleteGame = useDeleteGame()
+  const isAdmin = user?.role === 'admin'
   const [showModal, setShowModal] = useState(false)
+
+  // Table the current user created that is still active (they left but it's orphaned)
+  const myOrphanedTable = games?.find(
+    g => g.dealerUserId === user?.id && g.status !== 'FINISHED'
+  )
   const [form, setForm] = useState({ deckCount: 2, minPlayers: 2, maxPlayers: 8 })
 
   if (!authed) return null
@@ -49,6 +56,16 @@ export default function GamesPage() {
           <button style={{ ...s.btn, ...s.btnOutline }} onClick={() => { logout(); navigate('/login') }}>Logout</button>
         </div>
       </div>
+
+      {myOrphanedTable && (
+        <div style={{ background: '#1a2a1a', border: '1px solid #4ade8088', borderRadius: '10px', padding: '1rem 1.25rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+          <span style={{ color: '#4ade80' }}>⚠ You have an active table ({myOrphanedTable.status}) — return to it or delete it before joining another.</span>
+          <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+            <button style={{ ...s.btn, ...s.btnGold }} onClick={() => navigate(`/table/${myOrphanedTable.id}`)}>Return</button>
+            <button style={{ ...s.btn, padding: '0.5rem 0.9rem', background: 'transparent', color: '#f87171', border: '1px solid #f87171' }} onClick={() => deleteGame.mutate(myOrphanedTable.id)}>Delete</button>
+          </div>
+        </div>
+      )}
 
       <h2 style={{ color: '#7a9bb5', marginBottom: '1rem', fontWeight: 400 }}>Open Tables</h2>
 
@@ -71,12 +88,24 @@ export default function GamesPage() {
               <div>🃏 {game.deckCount} deck{game.deckCount !== 1 ? 's' : ''} · {game.deckCount * 52} cards</div>
               <div>👥 {game.playerCount} / {game.maxPlayers} players</div>
             </div>
-            <button
-              style={{ ...s.btn, ...s.btnGold, width: '100%', marginTop: '1rem' }}
-              onClick={() => joinGame.mutate(game.id)}
-            >
-              Join Table
-            </button>
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+              <button
+                disabled={!!myOrphanedTable}
+                style={{ ...s.btn, ...s.btnGold, flex: 1, opacity: myOrphanedTable ? 0.4 : 1, cursor: myOrphanedTable ? 'not-allowed' : 'pointer' }}
+                onClick={() => !myOrphanedTable && joinGame.mutate(game.id)}
+              >
+                Join Table
+              </button>
+              {isAdmin && (
+                <button
+                  style={{ ...s.btn, background: 'transparent', color: '#f87171', border: '1px solid #f87171', padding: '0.5rem 0.75rem' }}
+                  onClick={() => deleteGame.mutate(game.id)}
+                  title="Admin: delete table"
+                >
+                  🗑
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </div>

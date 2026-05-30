@@ -72,7 +72,7 @@ type EndGameCommand struct {
 	DealerUserID uuid.UUID
 }
 
-func EndGame(cmd EndGameCommand, games game.Repository, players player.Repository) (*game.Game, error) {
+func EndGame(cmd EndGameCommand, games game.Repository) (*game.Game, error) {
 	g, err := games.FindByID(cmd.GameID)
 	if err != nil || g == nil {
 		return nil, ErrGameNotFound
@@ -86,15 +86,13 @@ func EndGame(cmd EndGameCommand, games game.Repository, players player.Repositor
 	if err := games.Update(g); err != nil {
 		return nil, err
 	}
-	if err := players.MarkAllLeft(cmd.GameID); err != nil {
-		return nil, err
-	}
 	return g, nil
 }
 
 type DeleteGameCommand struct {
 	GameID       uuid.UUID
 	DealerUserID uuid.UUID
+	IsAdmin      bool
 }
 
 func DeleteGame(cmd DeleteGameCommand, games game.Repository) error {
@@ -102,7 +100,7 @@ func DeleteGame(cmd DeleteGameCommand, games game.Repository) error {
 	if err != nil || g == nil {
 		return ErrGameNotFound
 	}
-	if g.DealerUserID != cmd.DealerUserID {
+	if !cmd.IsAdmin && g.DealerUserID != cmd.DealerUserID {
 		return ErrForbidden
 	}
 	return games.Delete(cmd.GameID)

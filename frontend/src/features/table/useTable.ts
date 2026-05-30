@@ -28,6 +28,7 @@ export interface GameDetail {
   }
   totalCards: number
   remainingCards: number
+  dealerUsername: string
 }
 
 export function useGameDetail(gameId: string) {
@@ -94,14 +95,12 @@ export function useShuffle(gameId: string) {
 export function useDealToAll(gameId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ playerIds, count }: { playerIds: string[]; count: number }) => {
-      for (const pid of playerIds) {
-        await apiClient.post(`/games/${gameId}/players/${pid}/deal`, { count })
-      }
-    },
+    mutationFn: ({ count }: { count: number }) =>
+      apiClient.post(`/games/${gameId}/deal-round`, { count }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['leaderboard', gameId] })
       qc.invalidateQueries({ queryKey: ['game', gameId] })
+      qc.invalidateQueries({ queryKey: ['hand'] })
     },
   })
 }

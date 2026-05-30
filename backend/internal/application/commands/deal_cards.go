@@ -65,6 +65,56 @@ func DealCards(cmd DealCardsCommand, games game.Repository, shoes shoe.Repositor
 	return result, nil
 }
 
+// DealRound deals count cards to every active player atomically on the server side,
+// avoiding N separate HTTP round-trips and the race conditions of parallel client calls.
+type DealRoundCommand struct {
+	GameID       uuid.UUID
+	DealerUserID uuid.UUID
+	Count        int
+}
+
+func DealRound(cmd DealRoundCommand, games game.Repository, shoes shoe.Repository, players player.Repository) (*DealCardsResult, error) {
+	g, err := games.FindByID(cmd.GameID)
+	if err != nil || g == nil {
+		return nil, ErrGameNotFound
+	}
+	if g.DealerUserID != cmd.DealerUserID {
+		return nil, ErrForbidden
+	}
+	if g.Status != game.StatusInProgress {
+		return nil, game.ErrNotInProgress
+	}
+
+	activePlayers, err := players.FindActiveByGame(cmd.GameID)
+	if err != nil {
+		return nil, err
+	}
+
+	totalDealt := 0
+	for _, p := range activePlayers {
+		undealt, err := shoes.FindUndealtByGame(cmd.GameID)
+		if err != nil {
+			return nil, err
+		}
+		toDeal := cmd.Count
+		if toDeal > len(undealt) {
+			toDeal = len(undealt)
+		}
+		for i := 0; i < toDeal; i++ {
+			if err := shoes.DealCard(undealt[i].ID, p.ID); err != nil {
+				return nil, err
+			}
+		}
+		totalDealt += toDeal
+	}
+
+	ended, err := checkAutoEnd(cmd.GameID, games, shoes, players)
+	if err != nil {
+		return nil, err
+	}
+	return &DealCardsResult{DealtCount: totalDealt, GameEnded: ended}, nil
+}
+
 // checkAutoEnd ends the game if the shoe cannot deal a full round.
 // Only fires for IN_PROGRESS games. Returns true if the game was ended.
 func checkAutoEnd(gameID uuid.UUID, games game.Repository, shoes shoe.Repository, players player.Repository) (bool, error) {
@@ -89,11 +139,5 @@ func checkAutoEnd(gameID uuid.UUID, games game.Repository, shoes shoe.Repository
 	if err := g.End(); err != nil {
 		return false, err
 	}
-	if err := games.Update(g); err != nil {
-		return false, err
-	}
-	if err := players.MarkAllLeft(gameID); err != nil {
-		return false, err
-	}
-	return true, nil
+	return true, games.Update(g)
 }

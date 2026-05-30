@@ -56,3 +56,11 @@ export function useJoinGame() {
     onSuccess: (_, gameId) => navigate(`/table/${gameId}`),
   })
 }
+
+export function useDeleteGame() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (gameId: string) => apiClient.delete(`/games/${gameId}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['games'] }),
+  })
+}
