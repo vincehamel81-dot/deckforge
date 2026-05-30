@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useRequireAuth } from '../../shared/hooks/useRequireAuth'
 import { useAuthStore } from '../auth/authStore'
@@ -17,6 +16,7 @@ export default function TablePage() {
   const authed = useRequireAuth()
   const { id: gameId } = useParams<{ id: string }>()
   const user = useAuthStore(s => s.user)
+  const logout = useAuthStore(s => s.logout)
   const navigate = useNavigate()
 
   const [tableClosed, setTableClosed] = useState(false)
@@ -26,9 +26,9 @@ export default function TablePage() {
   const { data: leaderboard } = useLeaderboard(gameId!)
   const myEntry = leaderboard?.find(e => e.userId === user?.id)
   const { data: hand } = usePlayerHand(gameId!, myEntry?.playerId)
-  const { data: suitCounts } = useSuitCounts(gameId!)
-  const qc = useQueryClient()
+  const { data: suitCounts, refetch: refetchSuits } = useSuitCounts(gameId!)
   const [showShoeDetails, setShowShoeDetails] = useState(false)
+  const [isCheckingShoe, setIsCheckingShoe] = useState(false)
   const { data: cardCounts } = useCardCounts(gameId!)
 
   const startGame = useStartGame(gameId!)
@@ -41,25 +41,49 @@ export default function TablePage() {
 
   if (!authed) return null
 
-  if (tableClosed || isError) return (
-    <div style={{ minHeight: '100vh', background: '#0f1a2e', color: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ background: '#1a2a40', borderRadius: '16px', padding: '2.5rem', maxWidth: '400px', width: '100%', textAlign: 'center', border: '1px solid #f8717144' }}>
-        <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🚪</div>
-        <h2 style={{ color: '#f87171', margin: '0 0 0.75rem' }}>Table Closed</h2>
-        <p style={{ color: '#7a9bb5', marginBottom: '1.5rem' }}>The dealer closed this table. All cards have been returned to the shoe.</p>
+  const topBar = (
+    <div style={{
+      position: 'sticky', top: 0, zIndex: 10,
+      background: '#0f1a2e', borderBottom: '1px solid #1a2a40',
+      padding: '0.75rem 1.5rem',
+      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    }}>
+      <span style={{ color: '#e2c97e', fontWeight: 700, fontSize: '1.3rem' }}>♠ DeckForge</span>
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        <span style={{ color: '#7a9bb5', fontSize: '0.85rem' }}>👤 {user?.username}</span>
         <button
-          onClick={() => navigate('/', { replace: true })}
-          style={{ padding: '0.75rem 2rem', background: '#e2c97e', color: '#0f1a2e', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', width: '100%' }}
-        >
-          Return to Lobby
-        </button>
+          onClick={() => { logout(); navigate('/login') }}
+          style={{ padding: '0.4rem 0.8rem', background: 'transparent', border: '1px solid #4a6a8a', borderRadius: '6px', color: '#7a9bb5', cursor: 'pointer' }}
+        >Logout</button>
+      </div>
+    </div>
+  )
+
+  if (tableClosed || isError) return (
+    <div style={{ minHeight: '100vh', background: '#0f1a2e', color: '#e2e8f0', display: 'flex', flexDirection: 'column' }}>
+      {topBar}
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ background: '#1a2a40', borderRadius: '16px', padding: '2.5rem', maxWidth: '400px', width: '100%', textAlign: 'center', border: '1px solid #f8717144' }}>
+          <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🚪</div>
+          <h2 style={{ color: '#f87171', margin: '0 0 0.75rem' }}>Table Closed</h2>
+          <p style={{ color: '#7a9bb5', marginBottom: '1.5rem' }}>The dealer closed this table.</p>
+          <button
+            onClick={() => navigate('/', { replace: true })}
+            style={{ padding: '0.75rem 2rem', background: '#e2c97e', color: '#0f1a2e', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', width: '100%' }}
+          >
+            Return to Lobby
+          </button>
+        </div>
       </div>
     </div>
   )
 
   if (isLoading || !detail) return (
-    <div style={{ minHeight: '100vh', background: '#0f1a2e', color: '#7a9bb5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      Loading table...
+    <div style={{ minHeight: '100vh', background: '#0f1a2e', color: '#7a9bb5', display: 'flex', flexDirection: 'column' }}>
+      {topBar}
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        Loading table...
+      </div>
     </div>
   )
 
@@ -74,19 +98,25 @@ export default function TablePage() {
 
   if (game.status === 'FINISHED') {
     if (!leaderboard) return (
-      <div style={{ minHeight: '100vh', background: '#0f1a2e', color: '#7a9bb5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        Loading results…
+      <div style={{ minHeight: '100vh', background: '#0f1a2e', color: '#7a9bb5', display: 'flex', flexDirection: 'column' }}>
+        {topBar}
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          Loading results…
+        </div>
       </div>
     )
     return (
-      <GameResult
-        leaderboard={leaderboard}
-        hand={hand}
-        dealerUserId={game.dealerUserId}
-        currentUserId={user?.id}
-        myHandValue={myEntry?.handValue ?? 0}
-        onLobby={() => navigate('/')}
-      />
+      <div style={{ minHeight: '100vh', background: '#0f1a2e', color: '#e2e8f0', display: 'flex', flexDirection: 'column' }}>
+        {topBar}
+        <GameResult
+          leaderboard={leaderboard}
+          hand={hand}
+          dealerUserId={game.dealerUserId}
+          currentUserId={user?.id}
+          myHandValue={myEntry?.handValue ?? 0}
+          onLobby={() => navigate('/')}
+        />
+      </div>
     )
   }
 
@@ -95,10 +125,15 @@ export default function TablePage() {
     : undefined
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f1a2e', color: '#e2e8f0', padding: '1.5rem' }}>
+    <div style={{ minHeight: '100vh', background: '#0f1a2e', color: '#e2e8f0' }}>
 
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+      {/* Sticky header — always visible so user can see who they are and log out */}
+      <div style={{
+        position: 'sticky', top: 0, zIndex: 10,
+        background: '#0f1a2e', borderBottom: '1px solid #1a2a40',
+        padding: '0.75rem 1.5rem',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      }}>
         <div>
           <span style={{ color: '#e2c97e', fontWeight: 700, fontSize: '1.3rem' }}>♠ DeckForge</span>
           <span style={{ color: '#4a6a8a', marginLeft: '1rem', fontSize: '0.85rem' }}>
@@ -106,6 +141,7 @@ export default function TablePage() {
           </span>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <span style={{ color: '#7a9bb5', fontSize: '0.85rem' }}>👤 {user?.username}</span>
           <span style={{
             padding: '0.2rem 0.7rem', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600,
             background: game.status === 'WAITING' ? '#1a4a2a' : '#1a2a4a',
@@ -129,9 +165,14 @@ export default function TablePage() {
             }}
             style={{ padding: '0.4rem 0.8rem', background: 'transparent', border: '1px solid #4a6a8a', borderRadius: '6px', color: '#7a9bb5', cursor: 'pointer' }}
           >← Lobby</button>
+          <button
+            onClick={() => { logout(); navigate('/login') }}
+            style={{ padding: '0.4rem 0.8rem', background: 'transparent', border: '1px solid #4a6a8a', borderRadius: '6px', color: '#7a9bb5', cursor: 'pointer' }}
+          >Logout</button>
         </div>
       </div>
 
+      <div style={{ padding: '1.5rem' }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '1.5rem' }}>
 
         {/* Main column */}
@@ -141,16 +182,17 @@ export default function TablePage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
               <h3 style={{ color: '#e2c97e', margin: 0 }}>🃏 Shoe Status</h3>
               <button
-                onClick={() => {
-                  if (!showShoeDetails) {
-                    // Explicit user-initiated API call — force a fresh fetch, not cached data.
-                    qc.refetchQueries({ queryKey: ['suits', gameId!] })
-                  }
-                  setShowShoeDetails(v => !v)
+                onClick={async () => {
+                  if (showShoeDetails) { setShowShoeDetails(false); return }
+                  setIsCheckingShoe(true)
+                  await refetchSuits()
+                  setIsCheckingShoe(false)
+                  setShowShoeDetails(true)
                 }}
-                style={{ padding: '0.2rem 0.6rem', background: 'transparent', border: '1px solid #4a6a8a', borderRadius: '4px', color: '#7a9bb5', cursor: 'pointer', fontSize: '0.75rem' }}
+                disabled={isCheckingShoe}
+                style={{ padding: '0.2rem 0.6rem', background: 'transparent', border: '1px solid #4a6a8a', borderRadius: '4px', color: '#7a9bb5', cursor: isCheckingShoe ? 'default' : 'pointer', fontSize: '0.75rem' }}
               >
-                {showShoeDetails ? 'Hide Suits' : 'Check Suits'}
+                {isCheckingShoe ? 'Checking…' : showShoeDetails ? 'Hide Shoe' : 'Check Shoe'}
               </button>
             </div>
             <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>

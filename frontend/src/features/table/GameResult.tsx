@@ -18,7 +18,7 @@ export function GameResult({
   const isDraw = topPlayers.length > 1
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f1a2e', color: '#e2e8f0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+    <div style={{ flex: 1, background: '#0f1a2e', color: '#e2e8f0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
       <div style={{ background: '#1a2a40', borderRadius: '16px', padding: '2.5rem', width: '100%', maxWidth: '480px', border: '1px solid #e2c97e44', textAlign: 'center' }}>
         <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>{isDraw ? '🤝' : '🏆'}</div>
         <h1 style={{ color: '#e2c97e', margin: '0 0 0.25rem' }}>Game Over</h1>

@@ -113,8 +113,8 @@ export default function GamesPage() {
       </div>
 
       {showModal && (
-        <div style={s.modal} onClick={() => setShowModal(false)}>
-          <div style={s.modalBox} onClick={e => e.stopPropagation()}>
+        <div style={s.modal}>
+          <div style={s.modalBox}>
             <h2 style={{ color: '#e2c97e', marginBottom: '1rem' }}>Create New Table</h2>
             <label style={s.label}>Number of Decks (1–8)</label>
             <input type="number" min={1} max={8} value={form.deckCount} style={s.input}
