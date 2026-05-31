@@ -85,12 +85,17 @@ func (h *PlayerHandler) LeaveGame(c *gin.Context) {
 	}
 	requesterID, _ := uuid.Parse(claims.UserID)
 
-	if err := commands.RemovePlayer(commands.RemovePlayerCommand{
+	// Fetch the player record before removal so we can include their userId in
+	// the broadcast — clients use it to detect when they themselves were kicked.
+	target, _ := h.players.FindByID(playerID)
+
+	gameEnded, err := commands.RemovePlayer(commands.RemovePlayerCommand{
 		GameID:          gameID,
 		PlayerID:        playerID,
 		RequesterUserID: requesterID,
 		IsAdmin:         claims.Role == "admin",
-	}, h.games, h.players, h.shoes); err != nil {
+	}, h.games, h.players, h.shoes)
+	if err != nil {
 		status := http.StatusBadRequest
 		if err == commands.ErrGameNotFound || err == commands.ErrPlayerNotFound {
 			status = http.StatusNotFound
@@ -101,6 +106,19 @@ func (h *PlayerHandler) LeaveGame(c *gin.Context) {
 		c.JSON(status, gin.H{"error": err.Error()})
 		return
 	}
-	h.hub.Broadcast(gameID.String(), ws.Message{Event: ws.EventPlayerLeft})
+
+	// Include the removed player's userId so their client can self-identify.
+	leftPayload := map[string]interface{}{}
+	if target != nil {
+		leftPayload["userId"] = target.UserID.String()
+	}
+	h.hub.Broadcast(gameID.String(), ws.Message{Event: ws.EventPlayerLeft, Payload: leftPayload})
+
+	if gameEnded {
+		h.hub.Broadcast(gameID.String(), ws.Message{
+			Event:   ws.EventGameEnded,
+			Payload: map[string]interface{}{"reason": "not_enough_players"},
+		})
+	}
 	c.Status(http.StatusNoContent)
 }

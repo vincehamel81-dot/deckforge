@@ -14,6 +14,9 @@ type GameEvent =
 
 interface UseGameSocketOptions {
   onGameDeleted?: () => void
+  onKicked?: () => void
+  onNotEnoughPlayers?: () => void
+  currentUserId?: string
 }
 
 /**
@@ -33,7 +36,7 @@ export function useGameSocket(gameId: string, options: UseGameSocketOptions = {}
     ws.onmessage = (e: MessageEvent) => {
       const { event, payload } = JSON.parse(e.data) as {
         event: GameEvent
-        payload?: { reason?: string }
+        payload?: { reason?: string; userId?: string }
       }
 
       switch (event) {
@@ -46,13 +49,23 @@ export function useGameSocket(gameId: string, options: UseGameSocketOptions = {}
           qc.refetchQueries({ queryKey: ['hand'] })
           break
         case 'player_joined':
+          qc.invalidateQueries({ queryKey: ['leaderboard', gameId] })
+          qc.invalidateQueries({ queryKey: ['game', gameId] })
+          break
         case 'player_left':
           qc.invalidateQueries({ queryKey: ['leaderboard', gameId] })
           qc.invalidateQueries({ queryKey: ['game', gameId] })
+          // If the event carries a userId and it matches the current user,
+          // they were kicked — show a message and redirect to lobby.
+          if (payload?.userId && payload.userId === options.currentUserId) {
+            options.onKicked?.()
+          }
           break
         case 'game_ended':
           if (payload?.reason === 'deleted') {
             options.onGameDeleted?.()
+          } else if (payload?.reason === 'not_enough_players') {
+            options.onNotEnoughPlayers?.()
           } else {
             qc.invalidateQueries({ queryKey: ['game', gameId] })
             qc.invalidateQueries({ queryKey: ['games'] })

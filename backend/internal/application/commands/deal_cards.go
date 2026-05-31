@@ -126,7 +126,8 @@ func DealRound(cmd DealRoundCommand, games game.Repository, shoes shoe.Repositor
 	return &DealCardsResult{DealtCount: totalDealt, GameEnded: false}, nil
 }
 
-// checkAutoEnd ends the game if the shoe cannot deal a full round.
+// checkAutoEnd ends the game if the shoe cannot deal a full round, or if the
+// active player count has dropped below the configured minimum.
 // Only fires for IN_PROGRESS games. Returns true if the game was ended.
 func checkAutoEnd(gameID uuid.UUID, games game.Repository, shoes shoe.Repository, players player.Repository) (bool, error) {
 	g, err := games.FindByID(gameID)
@@ -144,7 +145,12 @@ func checkAutoEnd(gameID uuid.UUID, games game.Repository, shoes shoe.Repository
 	if err != nil {
 		return false, err
 	}
-	if activeCount == 0 || remaining >= activeCount {
+	if activeCount == 0 {
+		return false, nil
+	}
+	tooFewCards := remaining < activeCount
+	tooFewPlayers := activeCount < g.MinPlayers
+	if !tooFewCards && !tooFewPlayers {
 		return false, nil
 	}
 	if err := g.End(); err != nil {

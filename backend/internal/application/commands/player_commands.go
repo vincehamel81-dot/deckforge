@@ -141,40 +141,41 @@ type RemovePlayerCommand struct {
 	IsAdmin         bool
 }
 
-func RemovePlayer(cmd RemovePlayerCommand, games game.Repository, players player.Repository, shoes shoe.Repository) error {
+// RemovePlayer removes a player from a game and returns cards to the shoe.
+// Returns (gameAutoEnded, error) — gameAutoEnded is true when the player
+// count drop triggered an automatic FINISHED transition.
+func RemovePlayer(cmd RemovePlayerCommand, games game.Repository, players player.Repository, shoes shoe.Repository) (bool, error) {
 	g, err := games.FindByID(cmd.GameID)
 	if err != nil || g == nil {
-		return ErrGameNotFound
+		return false, ErrGameNotFound
 	}
 
 	p, err := players.FindByID(cmd.PlayerID)
 	if err != nil || p == nil || p.GameID != cmd.GameID {
-		return ErrPlayerNotFound
+		return false, ErrPlayerNotFound
 	}
 	if !p.IsActive() {
-		return ErrPlayerNotFound
+		return false, ErrPlayerNotFound
 	}
 
 	// Admins can remove anyone; otherwise only the dealer or the player themselves.
 	isDealerRemoving := g.DealerUserID.String() == cmd.RequesterUserID.String()
 	isPlayerLeaving := p.UserID.String() == cmd.RequesterUserID.String()
 	if !cmd.IsAdmin && !isDealerRemoving && !isPlayerLeaving {
-		return ErrForbidden
+		return false, ErrForbidden
 	}
 
 	// Return player's cards to the shoe.
 	if err := shoes.ReturnCardsByPlayer(cmd.PlayerID); err != nil {
-		return err
+		return false, err
 	}
 
 	p.Leave()
 	if err := players.Update(p); err != nil {
-		return err
+		return false, err
 	}
 
-	// Check auto-end after player leaves.
-	_, err = checkAutoEnd(cmd.GameID, games, shoes, players)
-	return err
+	return checkAutoEnd(cmd.GameID, games, shoes, players)
 }
 
 var ErrGameNotJoinable = ErrAlreadyInGame // re-use for joinable check (overridden below)
