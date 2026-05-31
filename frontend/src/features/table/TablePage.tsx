@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useRequireAuth } from '../../shared/hooks/useRequireAuth'
@@ -23,7 +23,6 @@ export default function TablePage() {
   const navigate = useNavigate()
 
   const [closedReason, setClosedReason] = useState<'deleted' | 'kicked' | 'not_enough_players' | null>(null)
-  const [shoeStale, setShoeStale] = useState(false)
   const [shoeSnapshot, setShoeSnapshot] = useState<ReturnType<typeof useSuitCounts>['data']>(undefined)
   const [isRefreshingSuits, setIsRefreshingSuits] = useState(false)
 
@@ -31,7 +30,6 @@ export default function TablePage() {
     onGameDeleted: () => setClosedReason(r => r ?? 'deleted'),
     onKicked: () => setClosedReason(r => r ?? 'kicked'),
     onNotEnoughPlayers: () => setClosedReason(r => r ?? 'not_enough_players'),
-    onShoeChanged: () => setShoeStale(true),
     currentUserId: user?.id,
   })
 
@@ -47,6 +45,18 @@ export default function TablePage() {
     if (suitCounts && !shoeSnapshot) {
       setShoeSnapshot(suitCounts)
     }
+  }, [suitCounts, shoeSnapshot])
+
+  // Derived: snapshot is stale when live suit counts differ from the last refresh.
+  // Comparing data eliminates the need for WS-event-driven shoeStale state, which
+  // was unreliable because the options closure in useGameSocket is intentionally
+  // excluded from the dependency array.
+  const shoeIsStale = useMemo(() => {
+    if (!suitCounts || !shoeSnapshot) return false
+    return suitCounts.some(s => {
+      const snap = shoeSnapshot.find(ss => ss.suit === s.suit)
+      return !snap || snap.count !== s.count
+    })
   }, [suitCounts, shoeSnapshot])
 
   const startGame = useStartGame(gameId!)
@@ -247,7 +257,7 @@ export default function TablePage() {
             <div style={{ borderTop: '1px solid #2d4a6a', paddingTop: '0.75rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
                 <span style={{ color: '#4a6a8a', fontSize: '0.75rem' }}>{t('table:shoe.undealtBySuit')}</span>
-                {shoeStale && (
+                {shoeIsStale && (
                   <button
                     onClick={handleRefreshSuits}
                     disabled={isRefreshingSuits}
