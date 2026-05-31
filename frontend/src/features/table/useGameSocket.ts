@@ -50,14 +50,14 @@ export function useGameSocket(gameId: string, options: UseGameSocketOptions = {}
           qc.invalidateQueries({ queryKey: ['game', gameId] })
           qc.invalidateQueries({ queryKey: ['suits', gameId] })
           qc.invalidateQueries({ queryKey: ['cards', gameId] })
-          qc.refetchQueries({ queryKey: ['hand'] })
+          qc.refetchQueries({ queryKey: ['hand', gameId] })
           break
         case 'shoe_shuffled':
           qc.invalidateQueries({ queryKey: ['leaderboard', gameId] })
           qc.invalidateQueries({ queryKey: ['game', gameId] })
           qc.invalidateQueries({ queryKey: ['suits', gameId] })
           qc.invalidateQueries({ queryKey: ['cards', gameId] })
-          qc.refetchQueries({ queryKey: ['hand'] })
+          qc.refetchQueries({ queryKey: ['hand', gameId] })
           break
         case 'player_joined':
           qc.invalidateQueries({ queryKey: ['leaderboard', gameId] })
@@ -88,7 +88,7 @@ export function useGameSocket(gameId: string, options: UseGameSocketOptions = {}
           qc.invalidateQueries({ queryKey: ['leaderboard', gameId] })
           qc.invalidateQueries({ queryKey: ['suits', gameId] })
           qc.invalidateQueries({ queryKey: ['cards', gameId] })
-          qc.refetchQueries({ queryKey: ['hand'] })
+          qc.refetchQueries({ queryKey: ['hand', gameId] })
           break
       }
     }

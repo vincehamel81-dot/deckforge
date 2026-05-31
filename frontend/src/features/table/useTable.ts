@@ -49,7 +49,7 @@ export function useLeaderboard(gameId: string) {
 
 export function usePlayerHand(gameId: string, playerId: string | undefined) {
   return useQuery<ShoeCard[]>({
-    queryKey: ['hand', playerId],
+    queryKey: ['hand', gameId, playerId],
     queryFn: () => apiClient.get(`/games/${gameId}/players/${playerId}/hand`).then(r => r.data.cards),
     enabled: !!playerId,
     refetchInterval: 15000,
@@ -93,7 +93,7 @@ export function useStartGame(gameId: string) {
       qc.invalidateQueries({ queryKey: ['leaderboard', gameId] })
       qc.invalidateQueries({ queryKey: ['suits', gameId] })
       qc.invalidateQueries({ queryKey: ['cards', gameId] })
-      qc.refetchQueries({ queryKey: ['hand'] })
+      qc.refetchQueries({ queryKey: ['hand', gameId] })
     },
   })
 }
@@ -133,7 +133,7 @@ export function useDealToAll(gameId: string) {
       qc.invalidateQueries({ queryKey: ['game', gameId] })
       qc.invalidateQueries({ queryKey: ['suits', gameId] })
       qc.invalidateQueries({ queryKey: ['cards', gameId] })
-      qc.refetchQueries({ queryKey: ['hand'] })
+      qc.refetchQueries({ queryKey: ['hand', gameId] })
     },
   })
 }
