@@ -39,6 +39,12 @@ tabs, since language preference is stored per browser, not per tab. This also le
 demonstrate the i18n feature: set one browser to French 🇫🇷 and leave the other in English 🇺🇸.
 Both players see the same real-time game in their own language.
 
+> **Note on translations:** French (fr-CA) is fully translated. Spanish (es-MX) is
+> intentionally sparse — switching to es-MX will show some strings in English. This is
+> the cascade fallback working as designed (ADR-002): missing keys in a partial locale
+> resolve to the en-US base automatically, so there are never raw key strings in the UI.
+> Completeness of es-MX is a deliberate demo-scope decision, not a gap in delivery.
+
 **2. Create a table** — log in as any username in browser A. From the lobby, create a game
 (choose deck count and min/max players). That player automatically becomes the dealer.
 
