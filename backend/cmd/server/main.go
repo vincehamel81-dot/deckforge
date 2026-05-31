@@ -6,7 +6,7 @@
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
-// @description JWT obtained from POST /auth/register or POST /auth/login.
+// @description JWT obtained from POST /auth/register or POST /auth/login. Enter the full value including the prefix: Bearer &lt;your-token&gt;
 
 package main
 

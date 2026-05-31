@@ -638,9 +638,31 @@ paths:
       summary: Start a game
       tags:
       - games
+  /games/{id}/ws:
+    get:
+      description: |-
+        Upgrades the connection to WebSocket. Pass the JWT as ?token=<jwt>
+        because browser WebSocket APIs cannot send custom headers.
+        Events pushed: game_started, game_ended, cards_dealt, player_joined, player_left, shoe_shuffled.
+      parameters:
+      - description: game UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: JWT
+        in: query
+        name: token
+        required: true
+        type: string
+      responses: {}
+      summary: Open a WebSocket connection for live game events
+      tags:
+      - realtime
 securityDefinitions:
   BearerAuth:
-    description: JWT obtained from POST /auth/register or POST /auth/login.
+    description: 'JWT obtained from POST /auth/register or POST /auth/login. Enter
+      the full value including the prefix: Bearer &lt;your-token&gt;'
     in: header
     name: Authorization
     type: apiKey

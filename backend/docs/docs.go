@@ -895,6 +895,32 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/games/{id}/ws": {
+            "get": {
+                "description": "Upgrades the connection to WebSocket. Pass the JWT as ?token=\u003cjwt\u003e\nbecause browser WebSocket APIs cannot send custom headers.\nEvents pushed: game_started, game_ended, cards_dealt, player_joined, player_left, shoe_shuffled.",
+                "tags": [
+                    "realtime"
+                ],
+                "summary": "Open a WebSocket connection for live game events",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "game UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "JWT",
+                        "name": "token",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
         }
     },
     "definitions": {
@@ -966,7 +992,7 @@ const docTemplate = `{
     },
     "securityDefinitions": {
         "BearerAuth": {
-            "description": "JWT obtained from POST /auth/register or POST /auth/login.",
+            "description": "JWT obtained from POST /auth/register or POST /auth/login. Enter the full value including the prefix: Bearer \u0026lt;your-token\u0026gt;",
             "type": "apiKey",
             "name": "Authorization",
             "in": "header"
