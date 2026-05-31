@@ -18,7 +18,10 @@ services:
       ADMIN_SEED_USERNAMES: "${ADMIN_SEED_USERNAMES:-}"
       AUTO_END_GAME: "${AUTO_END_GAME:-true}"
       DISCONNECT_TIMEOUT_SECONDS: "${DISCONNECT_TIMEOUT_SECONDS:-30}"
-      ENV: "${ENV:-production}"
+      LOG_LEVEL: "${LOG_LEVEL:-info}"
+      LOG_FORMAT: "${LOG_FORMAT:-json}"
+      DEBUG_ENABLED: "${DEBUG_ENABLED:-false}"
+      DEBUG_TOKEN: "${DEBUG_TOKEN:-}"
     volumes:
       - deckforge_data:/data
     restart: unless-stopped
