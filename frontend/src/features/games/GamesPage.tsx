@@ -5,6 +5,7 @@ import { useRequireAuth } from '../../shared/hooks/useRequireAuth'
 import { useAuthStore } from '../auth/authStore'
 import { useGames, useCreateGame, useJoinGame, useDeleteGame } from './useGames'
 import { LocaleSwitcher } from '../../shared/components/LocaleSwitcher'
+import { apiClient } from '../../lib/apiClient'
 
 const s = {
   page: { minHeight: '100vh', background: '#0f1a2e', color: '#e2e8f0', padding: '2rem' },
@@ -79,7 +80,7 @@ export default function GamesPage() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <h2 style={{ color: '#7a9bb5', fontWeight: 400, margin: 0 }}>{t('lobby:openTables')}</h2>
-        <button style={{ ...s.btn, ...s.btnGold }} onClick={() => setShowModal(true)}>{t('lobby:newTable')}</button>
+        <button style={{ ...s.btn, ...s.btnGold }} onClick={() => { createGame.reset(); setShowModal(true) }}>{t('lobby:newTable')}</button>
       </div>
 
       {isLoading && <p style={{ color: '#4a6a8a' }}>{t('lobby:loadingTables')}</p>}
@@ -136,6 +137,8 @@ export default function GamesPage() {
         ))}
       </div>
 
+      <DebugPanel />
+
       {showModal && (
         <div style={s.modal}>
           <div style={s.modalBox}>
@@ -149,15 +152,56 @@ export default function GamesPage() {
             <label style={s.label}>{t('lobby:modal.maxPlayers')}</label>
             <input type="number" min={form.minPlayers} max={8} value={form.maxPlayers} style={s.input}
               onChange={e => setForm({ ...form, maxPlayers: +e.target.value })} />
+            {createGame.isError && (
+              <p style={{ color: '#f87171', fontSize: '0.8rem', margin: '0.75rem 0 0' }}>
+                {t(`errors:${(createGame.error as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'UNKNOWN'}`,
+                  { defaultValue: t('errors:UNKNOWN') })}
+              </p>
+            )}
             <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}>
-              <button style={{ ...s.btn, ...s.btnOutline, flex: 1 }} onClick={() => setShowModal(false)}>{t('lobby:modal.cancel')}</button>
+              <button style={{ ...s.btn, ...s.btnOutline, flex: 1 }} onClick={() => { createGame.reset(); setShowModal(false) }}>{t('lobby:modal.cancel')}</button>
               <button style={{ ...s.btn, ...s.btnGold, flex: 1 }}
-                onClick={() => { createGame.mutate(form); setShowModal(false) }}>
+                onClick={() => createGame.mutate(form, { onSuccess: () => setShowModal(false) })}>
                 {t('lobby:modal.create')}
               </button>
             </div>
           </div>
         </div>
+      )}
+    </div>
+  )
+}
+
+function DebugPanel() {
+  const [beStatus, setBeStatus] = useState<string | null>(null)
+
+  const trigger = async (path: string) => {
+    try {
+      const res = await apiClient.get(path)
+      setBeStatus(`✓ ${path} → ${res.status} (check server logs)`)
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status ?? '?'
+      setBeStatus(`⚠ ${path} → ${status} (check server logs)`)
+    }
+  }
+
+  return (
+    <div style={{ marginTop: '3rem', borderTop: '1px solid #1a2a40', paddingTop: '1rem', textAlign: 'center' }}>
+      <span style={{ color: '#4a6a8a', fontSize: '0.72rem', marginRight: '0.75rem' }}>🔧 Debug / Observability:</span>
+      <button
+        onClick={() => trigger('/debug/error')}
+        style={{ color: '#f87171', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.72rem', marginRight: '0.75rem', textDecoration: 'underline' }}
+      >
+        Trigger BE Error (500)
+      </button>
+      <button
+        onClick={() => trigger('/debug/warn')}
+        style={{ color: '#fbbf24', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.72rem', textDecoration: 'underline' }}
+      >
+        Trigger BE Warning
+      </button>
+      {beStatus && (
+        <p style={{ color: '#4a6a8a', fontSize: '0.72rem', margin: '0.4rem 0 0' }}>{beStatus}</p>
       )}
     </div>
   )

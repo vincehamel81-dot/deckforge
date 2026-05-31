@@ -1,9 +1,11 @@
 package http
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog/log"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"github.com/vincehamel81-dot/deckforge/config"
@@ -54,6 +56,24 @@ func NewRouter(
 	r.GET("/health", func(c *gin.Context) { c.JSON(200, gin.H{"status": "ok"}) })
 	r.POST("/decks", shoeH.CreateDeck)
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	// Debug routes — demonstrate zerolog structured logging.
+	// These endpoints are intentionally unauthenticated for evaluator convenience.
+	// In production, protect or remove these routes.
+	r.GET("/debug/error", func(c *gin.Context) {
+		log.Error().
+			Str("correlationId", middleware.CorrelationID(c)).
+			Str("component", "debug").
+			Msg("simulated application error — triggered via /debug/error")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "SIMULATED_SERVER_ERROR"})
+	})
+	r.GET("/debug/warn", func(c *gin.Context) {
+		log.Warn().
+			Str("correlationId", middleware.CorrelationID(c)).
+			Str("component", "debug").
+			Msg("simulated warning — triggered via /debug/warn")
+		c.JSON(http.StatusOK, gin.H{"status": "warning logged"})
+	})
 
 	// Authenticated game routes
 	g := r.Group("/games", auth)

@@ -15,7 +15,7 @@ var (
 	ErrGameNotFound          = errors.New("game not found")
 	ErrForbidden             = errors.New("you do not have permission to perform this action")
 	ErrPlayerNotFound        = errors.New("player not found")
-	ErrAlreadyInGame         = errors.New("you are already in an active game")
+	ErrAlreadyInGame         = errors.New("ALREADY_IN_GAME")
 	ErrNotEnoughPlayers      = errors.New("not enough players to start the game")
 	ErrShoeEmpty             = errors.New("shoe has no cards — add decks before starting")
 	// ErrNotEnoughCardsToJoin is returned when joining an IN_PROGRESS game whose shoe

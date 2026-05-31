@@ -155,3 +155,15 @@ To run a single backend test by name:
 ```bash
 go test -run TestAutoEnd_LessThan_NotLessOrEqual ./internal/application/commands/
 ```
+
+---
+
+## Internationalisation (i18n)
+
+**Rule: all new user-facing text goes into `frontend/src/locales/en-US/<namespace>.json` first.**
+
+Namespaces: `common`, `auth`, `lobby`, `table`, `errors`.
+
+Other locale files (`fr-CA/`, `es-MX/`) are partial overrides — only keys that differ from en-US need to be defined there. Missing keys fall back to en-US automatically via the pre-merge cascade (ADR-002). This is intentional for the demo scope (see ASSUMPTIONS A-005).
+
+Never add text directly to `.tsx` files — always go through a `t('namespace:key')` call so that all copy is translatable.

@@ -8,5 +8,6 @@
   "GAME_ALREADY_FINISHED": "This game has already ended.",
   "UNAUTHORIZED": "You don't have permission to do that.",
   "SHOE_TOO_LOW_FOR_JOIN": "Not enough cards left in this table for you to join.",
+  "ALREADY_IN_GAME": "You are already at a table. Leave or delete it before creating a new one.",
   "UNKNOWN": "Something went wrong. Please try again."
 }
