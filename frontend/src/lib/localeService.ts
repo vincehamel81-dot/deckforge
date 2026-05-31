@@ -19,7 +19,11 @@ import esMXErrors from '../locales/es-MX/errors.json'
 type NestedRecord = Record<string, unknown>
 
 const FALLBACK = 'en-US'
-const SESSION_PREFIX = 'i18n:'
+// VITE_BUILD_HASH is injected by CI (git short-SHA). Changing it on each deploy
+// invalidates every sessionStorage entry, preventing stale merged-namespace bugs
+// when locale files change between releases. Falls back to 'local' for manual builds.
+const BUILD_HASH = (import.meta.env.VITE_BUILD_HASH as string | undefined) ?? 'local'
+const SESSION_PREFIX = `i18n:${BUILD_HASH}:`
 // In dev mode, Vite HMR can update JSON files without bumping the session key,
 // producing stale merged namespaces. Skip the cache entirely in development so
 // every page load uses freshly-merged locale data.

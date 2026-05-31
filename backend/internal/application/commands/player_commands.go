@@ -8,8 +8,9 @@ import (
 )
 
 type AddPlayerCommand struct {
-	GameID uuid.UUID
-	UserID uuid.UUID
+	GameID   uuid.UUID
+	UserID   uuid.UUID
+	Username string
 }
 
 func AddPlayer(cmd AddPlayerCommand, games game.Repository, players player.Repository, shoes shoe.Repository) (*player.Player, error) {
@@ -62,7 +63,7 @@ func AddPlayer(cmd AddPlayerCommand, games game.Repository, players player.Repos
 		}
 	}
 
-	p := player.New(cmd.GameID, cmd.UserID, activeCount)
+	p := player.New(cmd.GameID, cmd.UserID, cmd.Username, activeCount)
 	if err := players.Create(p); err != nil {
 		return nil, err
 	}

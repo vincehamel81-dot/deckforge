@@ -10,7 +10,6 @@ import (
 	"github.com/vincehamel81-dot/deckforge/internal/domain/game"
 	"github.com/vincehamel81-dot/deckforge/internal/domain/player"
 	"github.com/vincehamel81-dot/deckforge/internal/domain/shoe"
-	"github.com/vincehamel81-dot/deckforge/internal/domain/user"
 	ws "github.com/vincehamel81-dot/deckforge/internal/infrastructure/ws"
 	"github.com/vincehamel81-dot/deckforge/internal/presentation/http/middleware"
 )
@@ -19,13 +18,12 @@ type DealHandler struct {
 	games   game.Repository
 	players player.Repository
 	shoes   shoe.Repository
-	users   user.Repository
 	hub     *ws.Hub
 	autoEnd bool
 }
 
-func NewDealHandler(games game.Repository, players player.Repository, shoes shoe.Repository, users user.Repository, hub *ws.Hub, autoEnd bool) *DealHandler {
-	return &DealHandler{games: games, players: players, shoes: shoes, users: users, hub: hub, autoEnd: autoEnd}
+func NewDealHandler(games game.Repository, players player.Repository, shoes shoe.Repository, hub *ws.Hub, autoEnd bool) *DealHandler {
+	return &DealHandler{games: games, players: players, shoes: shoes, hub: hub, autoEnd: autoEnd}
 }
 
 type dealRequest struct {
@@ -202,7 +200,7 @@ func (h *DealHandler) GetLeaderboard(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid game id"})
 		return
 	}
-	board, err := queries.GetLeaderboard(gameID, h.players, h.shoes, h.users)
+	board, err := queries.GetLeaderboard(gameID, h.players, h.shoes)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 		return

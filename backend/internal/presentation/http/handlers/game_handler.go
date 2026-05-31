@@ -61,10 +61,11 @@ func (h *GameHandler) CreateGame(c *gin.Context) {
 
 	dealerID, _ := uuid.Parse(claims.UserID)
 	result, err := commands.CreateGame(commands.CreateGameCommand{
-		DealerUserID: dealerID,
-		DeckCount:    req.DeckCount,
-		MinPlayers:   req.MinPlayers,
-		MaxPlayers:   req.MaxPlayers,
+		DealerUserID:   dealerID,
+		DealerUsername: claims.Username,
+		DeckCount:      req.DeckCount,
+		MinPlayers:     req.MinPlayers,
+		MaxPlayers:     req.MaxPlayers,
 	}, h.games, h.players)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

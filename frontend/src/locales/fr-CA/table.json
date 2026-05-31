@@ -6,6 +6,8 @@
   "loadingResults": "Chargement des résultats…",
   "shoe": {
     "title": "🃏 État du Sabot",
+    "refreshShoe": "↻",
+    "refreshShoeTitle": "Actualiser le compte de cartes non distribuées (appel REST en direct au serveur)",
     "checking": "…",
     "total": "Total :",
     "remaining": "Restant :",

@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/vincehamel81-dot/deckforge/internal/domain/player"
 	"github.com/vincehamel81-dot/deckforge/internal/domain/shoe"
-	"github.com/vincehamel81-dot/deckforge/internal/domain/user"
 )
 
 type LeaderboardEntry struct {
@@ -18,7 +17,7 @@ type LeaderboardEntry struct {
 	CardCount int       `json:"cardCount"`
 }
 
-func GetLeaderboard(gameID uuid.UUID, players player.Repository, shoes shoe.Repository, users user.Repository) ([]LeaderboardEntry, error) {
+func GetLeaderboard(gameID uuid.UUID, players player.Repository, shoes shoe.Repository) ([]LeaderboardEntry, error) {
 	activePlayers, err := players.FindActiveByGame(gameID)
 	if err != nil {
 		return nil, err
@@ -34,18 +33,10 @@ func GetLeaderboard(gameID uuid.UUID, players player.Repository, shoes shoe.Repo
 		for _, c := range hand {
 			value += c.NumericValue
 		}
-		u, err := users.FindByID(p.UserID)
-		if err != nil {
-			return nil, err
-		}
-		username := ""
-		if u != nil {
-			username = u.Username
-		}
 		entries = append(entries, LeaderboardEntry{
 			PlayerID:  p.ID,
 			UserID:    p.UserID,
-			Username:  username,
+			Username:  p.Username,
 			SeatOrder: p.SeatOrder,
 			HandValue: value,
 			CardCount: len(hand),

@@ -45,7 +45,7 @@ func NewRouter(
 	gameH := handlers.NewGameHandler(games, players, shoes, users, hub, cfg.AutoEndGame)
 	shoeH := handlers.NewShoeHandler(games, shoes, hub)
 	playerH := handlers.NewPlayerHandler(games, players, shoes, hub)
-	dealH := handlers.NewDealHandler(games, players, shoes, users, hub, cfg.AutoEndGame)
+	dealH := handlers.NewDealHandler(games, players, shoes, hub, cfg.AutoEndGame)
 	wsH := handlers.NewWSHandler(hub, games, cfg.JWTSecret)
 
 	auth := middleware.AuthMiddleware(cfg.JWTSecret)

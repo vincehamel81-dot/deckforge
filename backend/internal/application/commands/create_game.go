@@ -24,10 +24,11 @@ var (
 )
 
 type CreateGameCommand struct {
-	DealerUserID uuid.UUID
-	DeckCount    int
-	MinPlayers   int
-	MaxPlayers   int
+	DealerUserID   uuid.UUID
+	DealerUsername string
+	DeckCount      int
+	MinPlayers     int
+	MaxPlayers     int
 }
 
 type CreateGameResult struct {
@@ -58,7 +59,7 @@ func CreateGame(cmd CreateGameCommand, games game.Repository, players player.Rep
 	}
 
 	// Dealer auto-joins as player 0 (seat 0).
-	p := player.New(g.ID, cmd.DealerUserID, 0)
+	p := player.New(g.ID, cmd.DealerUserID, cmd.DealerUsername, 0)
 	if err := players.Create(p); err != nil {
 		return nil, err
 	}

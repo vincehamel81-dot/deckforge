@@ -346,7 +346,7 @@ func TestLeaderboard_SortedDescending(t *testing.T) {
 		}
 	}
 
-	board, err := queries.GetLeaderboard(g.ID, r.players, r.shoes, r.users)
+	board, err := queries.GetLeaderboard(g.ID, r.players, r.shoes)
 	if err != nil {
 		t.Fatalf("GetLeaderboard: %v", err)
 	}
@@ -409,7 +409,7 @@ func TestLeaderboard_TieBreak_BySeatOrder(t *testing.T) {
 		}
 	}
 
-	board, err := queries.GetLeaderboard(g.ID, r.players, r.shoes, r.users)
+	board, err := queries.GetLeaderboard(g.ID, r.players, r.shoes)
 	if err != nil {
 		t.Fatalf("GetLeaderboard: %v", err)
 	}

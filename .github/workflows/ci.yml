@@ -35,6 +35,11 @@ jobs:
         working-directory: frontend
       - run: npx tsc --noEmit
         working-directory: frontend
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          VITE_BUILD_HASH: ${{ github.sha }}
+        run: npm run build
 
   push-image:
     needs: [test-backend, lint-frontend]

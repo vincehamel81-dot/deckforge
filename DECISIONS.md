@@ -682,6 +682,89 @@ short-circuits with 403 if the caller is not the game's dealer.
 
 ---
 
+## ADR-024: i18n merge-cache invalidation — build-hash key in Phase 1, Redis in Phase 2
+
+**Status:** Accepted  
+**Date:** 2026-05-31
+
+**Context:**  
+ADR-002 established that pre-merged locale namespaces are cached in `sessionStorage` to avoid
+re-running the deep-merge on every page load. The cache key is `i18n:{BUILD_HASH}:{locale}:{ns}`.
+A bug surfaced: when locale JSON files changed between deployments, browsers that had already
+visited the page retained stale merged namespaces in sessionStorage — producing either the wrong
+translation or the raw key string if the key had not existed in the previously cached version.
+
+A naïve fix (manually incrementing a version constant like `'i18n:v2:'`) has the same failure mode
+as a hardcoded query string (`scripts.js?t=20240101`): the developer must remember to bump it on
+every deploy that touches a locale file, and forgetting silently ships stale content.
+
+**Decision — Phase 1:** Drive the sessionStorage cache key from `VITE_BUILD_HASH`, a Vite
+env var injected by CI at build time.
+
+```typescript
+// localeService.ts
+const BUILD_HASH = (import.meta.env.VITE_BUILD_HASH as string | undefined) ?? 'local'
+const SESSION_PREFIX = `i18n:${BUILD_HASH}:`
+```
+
+```yaml
+# ci.yml — inject git SHA into the build
+- name: Build frontend
+  working-directory: frontend
+  env:
+    VITE_BUILD_HASH: ${{ github.sha }}
+  run: npm run build
+```
+
+Vite bakes the value into the bundle at compile time. Every push to `main` produces a new
+40-character SHA → a new sessionStorage key prefix → all previously cached merged namespaces are
+automatically treated as unknown keys and discarded. No manual bookkeeping, no stale content.
+
+Local dev is unaffected: `USE_SESSION_CACHE = !import.meta.env.DEV` means sessionStorage is
+bypassed entirely during `npm run dev`. The `'local'` fallback is stable across manual
+`npm run build` runs, which is acceptable — developers do not ship from their machine.
+
+**Why this is the right abstraction:**  
+This is identical to how asset pipeline cache-busting works (`chunk-[hash].js`) — the content
+hash is a function of the content, so it changes if and only if the content changes. Here we
+approximate that by using the commit SHA. The tradeoff: a commit that does not touch locale files
+still busts the cache. Acceptable — the merge computation is cheap and the stale-content risk
+outweighs the cold-miss cost.
+
+**Phase 2 — when this strategy changes:**  
+Phase 1 works because locale files are Vite-bundled (no HTTP fetch; content is baked into the
+JS bundle). In Phase 2, if locale files move server-side — for example, to a translation
+management platform (Phrase, Lokalise) or a dynamic CMS — the browser must fetch them at runtime.
+At that point:
+
+| Concern | Phase 1 (bundled) | Phase 2 (server-fetched) |
+|---|---|---|
+| Locale source | Vite bundle (baked-in JS module) | HTTP endpoint (dynamic) |
+| Merge location | Browser, once at startup | Server (or edge) on first request per locale+ns |
+| Merge result cache | `sessionStorage` keyed by build hash | **Redis**, keyed by locale+ns+content-hash; TTL aligned with translation update frequency |
+| Cache invalidation | New deploy (new build hash) | Webhook from TMS on publish → `DEL i18n:{locale}:{ns}` in Redis |
+| Browser-side cache | sessionStorage (per-tab) | HTTP `Cache-Control: max-age` + `ETag` (shared across tabs, respects browser disk cache) |
+
+In Phase 2, Redis serves as the shared merge-result store across backend instances. A translation
+update triggers a webhook that deletes the affected Redis key. The next browser request receives
+a freshly merged object and a new ETag. Subsequent requests within the CDN TTL are served from
+edge without reaching the backend. `sessionStorage` is no longer relevant — the browser's native
+HTTP cache handles per-client caching with proper invalidation semantics.
+
+**Relationship to ADR-008 / ADR-015 (Redis pub/sub):**  
+ADR-015 schedules Redis for Phase 6 to support horizontal scaling of the WebSocket hub. That
+same Redis instance would serve Phase 2 locale caching at no additional infrastructure cost —
+two independent key namespaces on one cluster (`i18n:*` for locale merges, `ws:*` for pub/sub).
+
+**Tradeoffs accepted:**
+- Commit SHA busts cache even for commits that do not touch locale files. The cold-miss cost is
+  negligible (one in-process deepMerge of < 15 KB of JSON objects per locale × namespace pair).
+- `'local'` fallback means a local `npm run build` does not bust the cache between manual builds.
+  Developers who need to test a fresh build locally can clear sessionStorage manually or switch
+  locales to force a re-merge.
+
+---
+
 ## Assumptions log
 
 Decisions where the assignment was silent and we applied "principle of least surprise":

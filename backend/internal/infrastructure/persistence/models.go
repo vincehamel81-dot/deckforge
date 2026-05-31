@@ -49,6 +49,7 @@ type PlayerModel struct {
 	ID        string `gorm:"primaryKey"`
 	GameID    string `gorm:"not null;index"`
 	UserID    string `gorm:"not null;index"`
+	Username  string `gorm:"not null;default:''"`
 	SeatOrder int    `gorm:"not null"`
 	JoinedAt  time.Time
 	LeftAt    *time.Time

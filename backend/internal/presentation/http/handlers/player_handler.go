@@ -45,8 +45,9 @@ func (h *PlayerHandler) JoinGame(c *gin.Context) {
 	userID, _ := uuid.Parse(claims.UserID)
 
 	p, err := commands.AddPlayer(commands.AddPlayerCommand{
-		GameID: gameID,
-		UserID: userID,
+		GameID:   gameID,
+		UserID:   userID,
+		Username: claims.Username,
 	}, h.games, h.players, h.shoes)
 	if err != nil {
 		status := http.StatusBadRequest
