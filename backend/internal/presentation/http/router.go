@@ -2,7 +2,6 @@ package http
 
 import (
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -58,17 +57,19 @@ func NewRouter(
 	r.POST("/decks", shoeH.CreateDeck)
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	// Debug routes — demonstrate zerolog structured logging.
-	// Only registered outside production so they are never reachable in a live deployment.
-	if os.Getenv("ENV") != "production" {
-		r.GET("/debug/error", func(c *gin.Context) {
+	// Debug routes — controlled by DEBUG_ENABLED env var (default false).
+	// Safe to enable in production: set DEBUG_ENABLED=true and DEBUG_TOKEN=<secret>.
+	// When DEBUG_TOKEN is set, every /debug/* request must carry X-Debug-Token: <secret>.
+	if cfg.DebugEnabled {
+		debugGroup := r.Group("/debug", debugTokenMiddleware(cfg.DebugToken))
+		debugGroup.GET("/error", func(c *gin.Context) {
 			log.Error().
 				Str("correlationId", middleware.CorrelationID(c)).
 				Str("component", "debug").
 				Msg("simulated application error — triggered via /debug/error")
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "SIMULATED_SERVER_ERROR"})
 		})
-		r.GET("/debug/warn", func(c *gin.Context) {
+		debugGroup.GET("/warn", func(c *gin.Context) {
 			log.Warn().
 				Str("correlationId", middleware.CorrelationID(c)).
 				Str("component", "debug").
@@ -106,6 +107,18 @@ func NewRouter(
 	r.GET("/games/:id/ws", wsH.ServeWS)
 
 	return r
+}
+
+// debugTokenMiddleware rejects requests that do not carry the expected
+// X-Debug-Token header. It is a no-op when token is empty (dev convenience).
+func debugTokenMiddleware(token string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if token != "" && c.GetHeader("X-Debug-Token") != token {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "debug token required"})
+			return
+		}
+		c.Next()
+	}
 }
 
 func corsMiddleware(origin string) gin.HandlerFunc {

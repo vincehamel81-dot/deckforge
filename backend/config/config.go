@@ -19,6 +19,12 @@ type Config struct {
 	AdminSeedUsernames []string
 	AutoEndGame              bool
 	DisconnectTimeoutSeconds int
+	// DebugEnabled registers /debug/* diagnostic routes. Off by default; safe to
+	// enable in production when paired with DebugToken.
+	DebugEnabled bool
+	// DebugToken, when non-empty, requires every /debug/* request to carry
+	// X-Debug-Token: <value>. Set via ops tooling (env var injection, not code).
+	DebugToken string
 }
 
 func Load() *Config {
@@ -35,6 +41,8 @@ func Load() *Config {
 		AdminSeedUsernames: parseCSV(getEnv("ADMIN_SEED_USERNAMES", "")),
 		AutoEndGame:              getEnvBool("AUTO_END_GAME", true),
 		DisconnectTimeoutSeconds: getEnvInt("DISCONNECT_TIMEOUT_SECONDS", 30),
+		DebugEnabled:             getEnvBool("DEBUG_ENABLED", false),
+		DebugToken:               getEnv("DEBUG_TOKEN", ""),
 	}
 }
 
