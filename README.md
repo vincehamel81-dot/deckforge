@@ -7,6 +7,14 @@ Backend: Go (Gin, GORM, SQLite) · Frontend: React 18 + TypeScript + Vite
 
 ---
 
+## Live demo
+
+- **Frontend:** https://deckforge-production.up.railway.app
+- **Backend API:** https://content-optimism-production-bdb5.up.railway.app
+- **Swagger UI:** https://content-optimism-production-bdb5.up.railway.app/swagger/index.html
+
+---
+
 ## What it does
 
 DeckForge manages poker-style card games. It provides the infrastructure for any multi-player card
@@ -28,7 +36,7 @@ game: shoe management, dealing, shuffling, player tracking, and scoring. The spe
 
 ## Prerequisites
 
-- Go 1.23+ — [go.dev/dl](https://go.dev/dl/)
+- Go 1.26+ — [go.dev/dl](https://go.dev/dl/)
 - Node.js 20+ — [nodejs.org](https://nodejs.org/)
 
 No database setup required. SQLite is embedded (zero dependencies).
@@ -77,22 +85,21 @@ DATABASE_URL="postgres://deckforge:deckforge@db:5432/deckforge?sslmode=disable" 
 docker compose --profile postgres up --build
 ```
 
-The backend image is ~12 MB (Alpine + statically linked Go binary). The frontend is
-served separately by Vite for local development; a production Nginx frontend container
-is a Phase 5 item (see [ROADMAP.md](ROADMAP.md)).
+The backend image is ~10 MB (Alpine + statically linked Go binary). The frontend
+has its own Dockerfile (Nginx) for containerised deployment — used in production on Railway.
 
 ---
 
 ## Environments
 
-| | Local (native) | Docker Compose | Production |
+| | Local (native) | Docker Compose | Production (Railway) |
 |---|---|---|---|
-| Backend | `go run ./cmd/server` | `docker compose up` | Azure Container App |
-| Frontend | `npm run dev` (Vite HMR) | Run natively alongside Docker | Azure Static Web App / nginx |
-| Database | SQLite (embedded) | SQLite or PostgreSQL (`--profile postgres`) | PostgreSQL (managed) |
-| API base URL | `http://localhost:8080` | `http://localhost:8080` | `https://<app>.azurecontainerapps.io` |
-| Auth | JWT (dev secret) | JWT (dev secret) | JWT → OIDC (Entra ID swap) |
-| Logs | ConsoleWriter (colored terminal) | Container stdout | Azure Monitor Logs |
+| Backend | `go run ./cmd/server` | `docker compose up` | Docker container (Railway) |
+| Frontend | `npm run dev` (Vite HMR) | Run natively alongside Docker | Nginx container (Railway) |
+| Database | SQLite (embedded) | SQLite or PostgreSQL (`--profile postgres`) | SQLite / PostgreSQL add-on |
+| API base URL | `http://localhost:8080` | `http://localhost:8080` | `https://content-optimism-production-bdb5.up.railway.app` |
+| Auth | JWT (dev secret) | JWT (dev secret) | JWT → OIDC (Entra ID, production path) |
+| Logs | ConsoleWriter (colored terminal) | Container stdout | JSON (zerolog, `ENV=production`) |
 
 **Frontend per-environment:** `VITE_API_URL` in a `.env` file. Vite resolves in order:
 `.env.local` → `.env.development` / `.env.production` → `.env`. For production builds the URL
@@ -115,7 +122,8 @@ is inlined into the bundle at `npm run build` time — set it before building.
 | `MIN_PLAYERS` | `2` | Default min players per game |
 | `MAX_PLAYERS` | `8` | Default max players per game |
 | `ADMIN_SEED_USERNAMES` | *(empty)* | Comma-separated list of usernames to seed as admins on first boot (e.g. `admin,ops`) |
-| `AUTO_END_GAME` | `true` | When `true`, game ends automatically when the shoe cannot serve a full round. Set to `false` to keep dealing partial hands until shoe is exhausted (demonstrates A7: 53rd deal returns empty, not error) |
+| `AUTO_END_GAME` | `true` | When `true`, game ends automatically when shoe cannot serve a full round or player count drops below minimum |
+| `DISCONNECT_TIMEOUT_SECONDS` | `30` | Grace period before a player with a closed WebSocket is auto-removed from the game |
 | `ENV` | `development` | Set to `production` for JSON logs |
 
 ### Frontend (`frontend/.env`)
@@ -213,20 +221,15 @@ GET    /games/:id/players/:pid/hand → player's hand (self or admin)
   The `role` claim maps from IdP group membership.
 - **Scale:** The WebSocket hub (Phase 2) is behind an interface — replace the in-process channel
   with Redis pub/sub for horizontal scaling.
-- **Containers:** Phase 5 adds Docker multi-stage build (~8 MB Alpine image) and
-  GitHub Actions CI/CD → GHCR. See [ROADMAP.md](ROADMAP.md).
+- **Containers:** Docker multi-stage build is shipped — ~10 MB Alpine image. GitHub Actions CI
+  builds and tests on every push. See [ROADMAP.md](ROADMAP.md) for Phase 2 items.
 
 ---
 
 ## Roadmap
 
-This project was scoped for 10 days. Phase 1 (this submission) covers the full assignment spec.
-See [ROADMAP.md](ROADMAP.md) for the complete plan:
-- Phase 2: WebSocket real-time (goroutine hub, turn-based Draw/Accept mechanic)
-- Phase 3: SVG card graphics, table layout animations
-- Phase 4: Integration tests, Swagger/OpenAPI docs
-- Phase 5: Docker, GitHub Actions CI/CD, PostgreSQL
-- Phase 6: Redis pub/sub, OIDC, Prometheus metrics, Kubernetes manifests
+Everything in the assignment spec is delivered. See [ROADMAP.md](ROADMAP.md) for what was
+shipped vs. what comes next (turn-based game mechanic, OIDC, Redis pub/sub, mobile layout).
 
 ---
 
