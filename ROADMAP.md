@@ -47,11 +47,14 @@ Everything below was built and shipped within the 2-day assignment window.
 - Admin kick with auto-close when player count drops below minimum
 - Kicked player receives "removed from table" notification and returns to lobby
 - Disconnected player (browser closed) auto-removed after 30s grace period
+- `<ErrorBoundary>` — catches unhandled component errors; shows styled fallback + reload button instead of blank screen
 - Deployed: Railway (backend + frontend) with CI/CD on every push to `main`
 
 ### Tests
-- 6 backend integration tests against real in-memory SQLite (no mocks)
-- Covers all ARCHITECTURE.md invariants: 52 unique cards, 53rd deal blocked, player removal returns cards, `remainingCards` never negative, auto-end threshold (`<` not `≤`), leaderboard sort + tie-break, decks sealed after start, FINISHED rejects mutations
+- **Backend** — 6 integration tests against real in-memory SQLite (no mocks). Covers all ARCHITECTURE.md invariants: 52 unique cards, 53rd deal blocked, player removal returns cards, `remainingCards` never negative, auto-end threshold (`<` not `≤`), leaderboard sort + tie-break, decks sealed after start, FINISHED rejects mutations
+- **Frontend** — Vitest unit tests (11 assertions across 2 suites):
+  - `localeService` — verifies the pre-merge cascade: en-US keys are inherited by sparse locales, fr-CA overrides apply correctly, no top-level keys are dropped
+  - `CardBadge` — verifies all 4 suits and all 13 faces are mapped; colour families are distinct; no silent `undefined` badges possible
 
 ---
 
@@ -77,8 +80,9 @@ day one to support these without rework.
 - **Tailwind CSS** — replace inline styles; responsive table layout for mobile and tablet
 - **SVG card graphics** — full 52-card deck rendered from data (suit + value → SVG face)
 - **Turn indicator + countdown** — animated timer on active player's seat
-- **Auto-reconnect** — exponential backoff on WebSocket drop (currently falls back to 15s polling)
-- **Frontend tests** — Vitest component tests for Leaderboard, DealerControls, GameResult
+- **WebSocket auto-reconnect** — exponential backoff on drop with a "reconnecting…" UI indicator; state sync request after reconnect to catch missed events (currently the 15s polling fallback recovers state silently but with up to 15s lag and no user feedback)
+- **Frontend component tests** — Vitest + React Testing Library; priority targets: `GameResult` (winner/draw rendering, standings order), `Leaderboard` (dealer/you badges, kick button visibility), `DealerControls` (button states vs game status). Pure-function tests (localeService, CardBadge) already shipped in Phase 1
+- **TablePage decomposition** — extract `ShoeStatusPanel`, `PlayerHandPanel`, and `GameStatusBar` from the 300+ line `TablePage.tsx`; each becomes independently testable
 
 ### Infrastructure
 - **GitHub Actions → Azure Container Registry** — production image pipeline
