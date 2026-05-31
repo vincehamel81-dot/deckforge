@@ -9,7 +9,6 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /deckforge ./cmd/serve
 
 # --- run stage ---
 FROM alpine:3.19
-RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /app
 COPY --from=builder /deckforge .
 EXPOSE 8080
