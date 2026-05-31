@@ -51,7 +51,7 @@ Everything below was built and shipped within the 2-day assignment window.
 - Deployed: Railway (backend + frontend) with CI/CD on every push to `main`
 
 ### Tests
-- **Backend** — 6 integration tests against real in-memory SQLite (no mocks). Covers all ARCHITECTURE.md invariants: 52 unique cards, 53rd deal blocked, player removal returns cards, `remainingCards` never negative, auto-end threshold (`<` not `≤`), leaderboard sort + tie-break, decks sealed after start, FINISHED rejects mutations
+- **Backend** — 7 integration tests against real in-memory SQLite (no mocks). Covers all ARCHITECTURE.md invariants: 52 unique cards, 53rd deal blocked, player removal returns cards, `remainingCards` never negative, auto-end threshold (`<` not `≤`), leaderboard sort + tie-break, decks sealed after start, FINISHED rejects mutations
 - **Frontend** — Vitest unit tests (11 assertions across 2 suites):
   - `localeService` — verifies the pre-merge cascade: en-US keys are inherited by sparse locales, fr-CA overrides apply correctly, no top-level keys are dropped
   - `CardBadge` — verifies all 4 suits and all 13 faces are mapped; colour families are distinct; no silent `undefined` badges possible

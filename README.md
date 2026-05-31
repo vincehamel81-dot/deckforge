@@ -212,8 +212,8 @@ go test ./...
 ```
 
 17 tests across two layers:
-- **Domain** (9): Fisher-Yates shuffle correctness, deck uniqueness, card numeric values, game state machine transitions
-- **Application integration** (8): all key invariants from `ARCHITECTURE.md` — 52-unique-card deal, 53rd deal blocked after shoe exhaustion, player removal returns cards to shoe, `remainingCards` never negative, auto-end fires on `remaining < activeCount` (not `≤`), decks sealed after game starts, FINISHED game rejects deal/shuffle/join, leaderboard sorted descending with seat-order tie-break
+- **Domain** (10): Fisher-Yates shuffle correctness (all cards present, positions reassigned, order changed), deck uniqueness (52 unique cards), card numeric values, game state machine transitions
+- **Application integration** (7): all key invariants from `ARCHITECTURE.md` — 52-unique-card deal + auto-end, player removal returns cards to shoe, auto-end threshold (`<` not `≤`), decks sealed after game starts, FINISHED game rejects deal/shuffle/join, leaderboard sorted descending, leaderboard seat-order tie-break
 
 ---
 
