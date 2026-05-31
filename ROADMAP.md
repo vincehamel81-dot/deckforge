@@ -76,17 +76,24 @@ core engine.
 - [ ] `POST /games/:id/draw` — active player draws 1 card for ALL players (Draw/Accept mechanic); triggers auto-end check
 - [ ] `POST /games/:id/accept` — active player passes their turn; advances to next player
 - [ ] **Turn timer** — 15 s per turn (`TURN_TIMEOUT_SECONDS` env var, default 15); server-side goroutine per active game; on expiry, server auto-fires Accept and emits `turn_expired` then `turn_changed`; broadcasts `turn_timer_started { playerId, expiresAt }` so clients can render a countdown
+- [ ] **Player disconnect detection** — timeout-based grace period (`DISCONNECT_TIMEOUT_SECONDS=30`); on WS disconnect, start server-side timer; if player reconnects within timeout, no visible change; if timer expires, broadcast `player_away { userId }`; on reconnect after expiry, broadcast `player_returned`; auto-remove is a separate opt-in (`AUTO_REMOVE_DISCONNECTED=false`). See ASSUMPTIONS A-013.
+- [ ] **Completed games table** — add `completed_games` table with columns: `id`, `game_id` (FK), `winner_user_id` (nullable for draws), `draw_winner_user_ids` (JSON array), `all_player_user_ids` (JSON array), `finished_at`; populated automatically when game transitions to FINISHED
+- [ ] `GET /games/:id/result` — returns final leaderboard + winner from `completed_games` table
+- [ ] Store language preference (`locale`) on the user profile in the database. `PATCH /users/me` endpoint to update. Read at login time to hydrate i18n before first render.
 
 ### Frontend
 - [x] WebSocket client (`useGameSocket.ts`) — connects to `/games/:id/ws?token=`, invalidates TanStack Query cache on each event; 15 s polling as fallback if socket drops
 - [x] Live updates: leaderboard, shoe status, hand — all driven by socket events
 - [ ] Auto-reconnect with exponential backoff (currently: polling fallback only)
+- [ ] Player disconnect indicator — greyed-out seat when `player_away` received; restored on `player_returned`
 - [ ] Turn indicator — "Your turn" / "Waiting for Alice..."
 - [ ] Draw / Accept buttons (only shown on your turn)
 - [ ] **Turn countdown** — animated timer on the active player's seat; driven by `turn_timer_started.expiresAt`; clears on `turn_changed`
 - [ ] Animated card deal (CSS transition — card slides to player seat)
 - [ ] Toast notifications for game events
 - [ ] **In-game chat** — text messages scoped to a game; broadcast via the existing WebSocket hub; stored ephemerally (in-memory, not persisted); message format `{ "event": "chat", "payload": { "username", "message", "sentAt" } }`
+- [ ] **Full player list column** — separate view showing all players (active + left) for a game with join/leave timestamps and final hand value
+- [ ] Tailwind CSS — replace inline styles; responsive table layout for mobile
 
 ---
 

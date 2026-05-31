@@ -130,6 +130,69 @@ of browser or device.
 
 ---
 
+## A-010: i18n — Partial translations are intentional, not missing
+
+fr-CA and es-MX locale files are deliberately incomplete. Keys that have not been translated
+fall back to their en-US equivalents via the pre-merge cascade (see ADR-002). This is intentional
+behaviour, not a bug.
+
+**Why:** The assignment evaluates architecture, not translation completeness. The cascade
+mechanism itself is the feature being demonstrated. Partial overrides show the fallback working
+correctly — an evaluator switching to es-MX will see Spanish for core strings and English for
+peripheral ones, which is exactly how a real Phase 1 i18n rollout behaves in production.
+
+**Production path:** Fill in the remaining keys in fr-CA and es-MX as the product stabilises.
+Hire a professional translator for any locale before public launch.
+
+---
+
+## A-011: i18n — Phase 1 stores language in browser only; full per-user preference is Phase 2
+
+Language selection is persisted in `localStorage` and scoped to the browser session. The user
+must re-select their language on a new device or browser. Server-side language preference
+(database column + API read at login) is explicitly deferred to Phase 2.
+
+See also A-008.
+
+---
+
+## A-012: Scope — Backend API is the primary deliverable; frontend is functional but not polished
+
+This submission prioritises backend correctness, architecture quality, and real-time
+infrastructure. The frontend is functional and demonstrates all API endpoints visually, but it
+uses inline styles throughout and is not responsive on mobile viewports.
+
+**Why:** A responsive, Tailwind-polished frontend would double the implementation time with no
+impact on the backend evaluation criteria. The frontend architecture (feature-sliced, TanStack
+Query, Zustand, WebSocket hook) is production-grade even if the visual polish is not.
+
+**Roadmap:** Phase 1.5 adds Docker. Phase 3 replaces inline styles with Tailwind CSS and adds
+responsive table layout.
+
+---
+
+## A-013: Player disconnect detection — Phase 2
+
+When a player closes their browser or navigates away without clicking "← Lobby", their
+WebSocket connection closes on the server side. The player remains in the game roster until
+the dealer manually removes them or the game ends. Other players do not see a "player offline"
+indicator.
+
+**Why:** Reliable disconnect detection requires a timeout-based grace period (WebSocket
+disconnect does not distinguish tab close from page refresh from brief network hiccup). The
+timeout goroutine adds per-player server state and is out of scope for Phase 1.
+
+**Phase 2 design:**
+- On WS disconnect, start a server-side timer (default: `DISCONNECT_TIMEOUT_SECONDS=30`, env-configurable).
+- If the player reconnects within the grace period, cancel the timer — no visible change to other players.
+- If the timer expires, broadcast `player_away` with `{ userId }`. Clients show a greyed-out
+  indicator on that player's seat. The player is NOT automatically removed — they are marked
+  as away and can still reconnect.
+- On reconnect after expiry, reverse the `player_away` indicator with `player_returned`.
+- Auto-remove (setting `AUTO_REMOVE_DISCONNECTED=true`) is a separate opt-in env var, off by default.
+
+---
+
 ## A-009: No IP-based session gating — multiple players per IP allowed
 
 The backend does not track or restrict connections by IP address. Multiple users behind the same

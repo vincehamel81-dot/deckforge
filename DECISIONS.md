@@ -481,6 +481,207 @@ records what was deferred and why, so the choices are transparent at the intervi
 
 ---
 
+## ADR-016: Language-driven UI — i18n as a first-class feature, not a retrofit
+
+**Status:** Accepted  
+**Date:** 2026-05-30
+
+**Context:**  
+Most demo projects hardcode English strings. GoTo serves North America and their production
+products ship in multiple languages. The question was whether to treat i18n as a Phase 4 polish
+item or as a first-class architectural concern.
+
+**Decision:** i18n from day one, namespace-first. Every user-facing string goes through a
+`t('namespace:key')` call. No English literals in TSX files. en-US is the canonical source;
+fr-CA and es-MX are partial overrides that cascade to English for any untranslated key.
+
+**Reasoning:**
+- GoTo evaluates architecture quality, not just feature count. A project that has i18n baked in
+  demonstrates product thinking that a rushed hardcoded demo does not.
+- The cascade design (pre-merge at startup, O(1) lookup thereafter) is defensible at interview:
+  it's a deliberate performance choice, not a naive fallback chain.
+- Partial translations (es-MX is intentionally sparse) show the cascade working. An evaluator
+  switching to es-MX and seeing English fallback for untranslated keys demonstrates the system
+  is behaving as designed, not broken.
+- Language preference in `localStorage` (persists across sessions) vs merged namespace in
+  `sessionStorage` (cleared on tab close, content cache) is a deliberate distinction. See ADR-002.
+
+**Tradeoffs accepted:**  
+All locale files are bundled — no lazy loading. Acceptable at < 15 KB total. See ROADMAP Phase 4
+for the lazy-loading upgrade path.
+
+---
+
+## ADR-017: WebSocket push as primary, polling as fallback
+
+**Status:** Accepted  
+**Date:** 2026-05-30
+
+**Context:**  
+Phase 1 was originally planned as polling-only (ADR-013). The question was whether to pull
+WebSocket forward given GoTo's real-time product context.
+
+**Decision:** WebSocket push is the primary real-time mechanism, with TanStack Query's
+`refetchInterval: 15000` as a slow fallback for resilience. The WS hub is goroutine-based
+(one hub goroutine + one client goroutine per connected player). Six event types cover all
+game state transitions.
+
+**Reasoning:**
+- GoTo's product is real-time voice/video. Demonstrating goroutine-based WebSocket competence
+  is directly on-brand in a way that polling alone is not.
+- The implementation cost was lower than expected: the gorilla/websocket hub is ~120 lines,
+  the hub interface is already abstracted for Redis pub/sub scaling (Phase 6).
+- Polling as a fallback (not the primary path) means the UI degrades gracefully if WS drops —
+  players see updates within 15 seconds at worst.
+
+**Tradeoffs accepted:**
+- WS auth via `?token=` query string (browsers cannot send headers on WS upgrade). Token is
+  short-lived (24h JWT); the risk is acceptable for a demo. Production upgrade: short-lived
+  WS ticket endpoint.
+- Horizontal scaling requires Redis pub/sub (Phase 6). In-process hub is correct for single-
+  instance demo.
+
+---
+
+## ADR-018: Frontend decomposed into feature-sliced components, not monolithic pages
+
+**Status:** Accepted  
+**Date:** 2026-05-30
+
+**Context:**  
+A minimal assignment frontend could be a single large component per route. The question was
+how much component decomposition to apply given the 2-day window.
+
+**Decision:** Feature-sliced structure: `features/auth/`, `features/games/`, `features/table/`.
+Within each feature, components, hooks, and queries are co-located. Shared primitives are in
+`shared/`. No cross-feature imports.
+
+**Key splits:**
+- `TablePage` → `DealerControls`, `Leaderboard`, `GameResult`, `CardBadge`
+- `useTable.ts` owns all TanStack Query hooks for the table route
+- `useGameSocket.ts` owns the WS lifecycle; emits callbacks so TablePage stays stateless about WS internals
+
+**Reasoning:**
+- An evaluator reading the source should be able to navigate to any feature without reading the
+  entire codebase. Co-location makes this possible.
+- TanStack Query hooks isolated per feature means cache keys are owned by the file that defines
+  them — no implicit dependencies across features.
+- This structure is the React equivalent of feature modules in Angular or areas in ASP.NET MVC.
+  It's a recognizable pattern that demonstrates production frontend experience.
+
+---
+
+## ADR-019: Auto-end strategies — two independent triggers
+
+**Status:** Accepted  
+**Date:** 2026-05-30
+
+**Context:**  
+The original auto-end only fired on shoe exhaustion (`remaining < activePlayerCount`). The
+question was whether player removal below minimum players should also trigger auto-end.
+
+**Decision:** Two independent auto-end conditions, both checked after every mutating operation:
+1. `remainingCards < activePlayerCount` — shoe cannot serve a full round
+2. `activePlayerCount < game.MinPlayers` — table falls below configured minimum
+
+Both conditions call the same `checkAutoEnd` helper. The helper is idempotent (only acts on
+IN_PROGRESS games). Condition 2 is the direct consequence of admin kicking a player.
+
+**Reasoning:**
+- A game with one player is not a multiplayer game. Auto-ending prevents a dealer from being
+  left alone at the table with no path forward.
+- Broadcasting `game_ended` with `reason: "not_enough_players"` gives clients a distinct message
+  to display, separate from the normal game-over screen.
+- The `AUTO_END_GAME` env var disables both conditions for QA testing.
+
+---
+
+## ADR-020: Multiple admin seeding via CSV env var
+
+**Status:** Accepted  
+**Date:** 2026-05-30
+
+**Context:**  
+The original design seeded a single admin via `ADMIN_SEED_USERNAME`. A real deployment needs
+multiple operators (e.g., two developers both needing admin access during evaluation).
+
+**Decision:** `ADMIN_SEED_USERNAMES` accepts a comma-separated list. Each username is created
+as admin on startup if it does not already exist. Existing users are not modified (role elevation
+would require an explicit admin API call).
+
+**Reasoning:**
+- Zero additional code complexity — a `strings.Split` on the config value.
+- Reviewers can seed their own admin username alongside the documented default.
+- Prevents the "who has the admin account?" problem during a live demo or pair evaluation.
+
+---
+
+## ADR-021: Game min/max player count configurable per-game and via env defaults
+
+**Status:** Accepted  
+**Date:** 2026-05-30
+
+**Context:**  
+The assignment does not specify player count limits. Hardcoding 2–8 is the simplest path.
+
+**Decision:** `MinPlayers` and `MaxPlayers` are set per-game at creation time (body params) with
+env-var defaults (`MIN_PLAYERS=2`, `MAX_PLAYERS=8`). The domain validates `2 ≤ min ≤ max ≤ 8`.
+
+**Reasoning:**
+- A card engine without configurable table sizes is not a reusable engine — it is a single
+  hardcoded game. The per-game setting demonstrates the engine philosophy.
+- Default env vars let operators change platform-wide limits without code changes.
+- The frontend creation modal exposes both fields with sensible defaults.
+
+---
+
+## ADR-022: JWT authentication — simple foundation with explicit production upgrade path
+
+**Status:** Accepted  
+**Date:** 2026-05-30
+
+**Context:**  
+The assignment does not require authentication. But per-player hand visibility requires identity.
+The question was how much auth infrastructure to build in a 2-day window.
+
+**Decision:** Username-only JWT (no password). `POST /auth/register` or `/auth/login` returns a
+token. HMAC-SHA256 signing. Stateless — no session store. Role claim embedded in the token.
+
+**Reasoning:**
+- No password reduces demo friction to near zero (evaluator can create accounts instantly) while
+  keeping the security model structurally correct: tokens are signed, expiry is enforced,
+  middleware validates on every request.
+- The production upgrade is one function: replace HMAC validation in `auth_middleware.go` with
+  OIDC token introspection. The `role` claim maps directly from IdP group membership. No business
+  logic changes required.
+- Separation of `user` role (JWT) from `dealer` role (per-game DB lookup) is a deliberate
+  design choice, not a simplification. See ADR-004.
+
+---
+
+## ADR-023: Dealer as an application-layer role, not a JWT claim
+
+**Status:** Accepted  
+**Date:** 2026-05-30
+
+**Context:**  
+Many implementations conflate "game creator" with a JWT role (e.g., `role: dealer`). This
+creates a global, permanent claim for what is actually a contextual, per-game relationship.
+
+**Decision:** Dealer status is resolved from the database on every protected request:
+`currentUser.id == game.dealer_user_id`. The `DealerMiddleware` performs this check and
+short-circuits with 403 if the caller is not the game's dealer.
+
+**Reasoning:**
+- A user can be the dealer of game A and a regular player in game B simultaneously. A JWT claim
+  would make this impossible or require re-issuing tokens on every game state change.
+- The database is the authoritative source for who is the dealer of a given game. Trusting it
+  on every request is correct — it cannot become stale the way a JWT claim can.
+- This pattern is the exact equivalent of resource-level ownership checks in ASP.NET Core
+  (e.g., `if (resource.OwnerId != currentUser.Id) return Forbid()`). It is the right pattern.
+
+---
+
 ## Assumptions log
 
 Decisions where the assignment was silent and we applied "principle of least surprise":
