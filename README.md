@@ -15,6 +15,51 @@ Backend: Go (Gin, GORM, SQLite) · Frontend: React 18 + TypeScript + Vite
 
 ---
 
+## How to demo
+
+DeckForge is a **card engine**, not a specific card game. The dealer controls the table;
+players collect cards; the engine scores by hand value. Here is the fastest path to see
+everything working.
+
+### Roles
+
+| Role | How to get it | What they can do |
+|---|---|---|
+| **Player** | Register with any username | Join tables, receive cards, see own hand |
+| **Dealer** | The player who creates a table | Shuffle, deal, check shoe, end game |
+| **Admin** | Pre-seeded usernames (see below) | Kick players, delete any table |
+
+**Pre-configured admin accounts on the live site** — log in with any of these usernames:
+`admin1` · `admin2` · `admin3`
+
+### Suggested demo flow
+
+**1. Open two browsers** (e.g. Chrome + Edge) or two separate browser profiles — not just two
+tabs, since language preference is stored per browser, not per tab. This also lets you
+demonstrate the i18n feature: set one browser to French 🇫🇷 and leave the other in English 🇺🇸.
+Both players see the same real-time game in their own language.
+
+**2. Create a table** — log in as any username in browser A. From the lobby, create a game
+(choose deck count and min/max players). That player automatically becomes the dealer.
+
+**3. Add a deck and join** — the dealer adds a deck via the shoe controls. Log in as a
+different username in browser B and join the table from the lobby. Both browsers update in
+real time via WebSocket.
+
+**4. Dealer controls the round** (Phase 1 — full dealer authority):
+- **Shuffle** the shoe before starting
+- **Start game** once the minimum player count is reached — triggers an initial deal
+- **Deal cards** to all players (choose how many per round)
+- **Check suit counts** — the ↻ button (visible after dealing) calls a live REST endpoint
+  and shows how many undealt cards remain per suit
+- **End game** — reveals all hands; leaderboard shows the winner by highest card total
+
+**5. Try admin controls** — log in as `admin1` in a third window. Admins can kick individual
+players from any table or delete the table entirely; affected players receive a real-time
+notification and are returned to the lobby.
+
+---
+
 ## What it does
 
 DeckForge manages poker-style card games. It provides the infrastructure for any multi-player card
