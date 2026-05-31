@@ -1,8 +1,8 @@
 # --- build stage ---
 FROM node:20-alpine AS builder
 WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci
+COPY package.json ./
+RUN npm install
 COPY . .
 # VITE_API_URL must be set at build time (Vite bakes it into the bundle)
 ARG VITE_API_URL=http://localhost:8080
