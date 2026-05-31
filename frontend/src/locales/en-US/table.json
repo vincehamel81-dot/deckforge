@@ -10,6 +10,7 @@
   "shoe": {
     "title": "🃏 Shoe Status",
     "refreshShoe": "↻",
+    "refreshShoeTitle": "Refresh undealt card counts (live REST API call to the server)",
     "checking": "…",
     "total": "Total:",
     "remaining": "Remaining:",

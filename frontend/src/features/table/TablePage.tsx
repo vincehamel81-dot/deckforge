@@ -137,10 +137,9 @@ export default function TablePage() {
         {topBar}
         <GameResult
           leaderboard={leaderboard}
-          hand={hand}
           dealerUserId={game.dealerUserId}
           currentUserId={user?.id}
-          myHandValue={myEntry?.handValue ?? 0}
+          gameId={gameId!}
           onLobby={() => navigate('/')}
         />
       </div>
@@ -252,6 +251,7 @@ export default function TablePage() {
                   <button
                     onClick={handleRefreshSuits}
                     disabled={isRefreshingSuits}
+                    title={t('table:shoe.refreshShoeTitle')}
                     style={{ padding: '0.1rem 0.4rem', background: 'transparent', border: '1px solid #4a6a8a', borderRadius: '3px', color: '#7a9bb5', cursor: isRefreshingSuits ? 'default' : 'pointer', fontSize: '0.7rem' }}
                   >
                     {isRefreshingSuits ? t('table:shoe.checking') : t('table:shoe.refreshShoe')}

@@ -142,7 +142,7 @@ export default function GamesPage() {
         ))}
       </div>
 
-      <DebugPanel />
+      {import.meta.env.DEV && <DebugPanel />}
 
       {showModal && (
         <div style={s.modal}>

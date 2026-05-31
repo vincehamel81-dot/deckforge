@@ -134,6 +134,23 @@ is inlined into the bundle at `npm run build` time — set it before building.
 
 ---
 
+## Frontend design notes
+
+### Undealt card count — manual refresh
+
+The "Undealt cards per suit" panel in the table view shows a **manually-refreshed snapshot**
+of `GET /games/:id/shoe/suits`, not a live auto-updating feed.
+
+This is intentional: it demonstrates an explicit REST API call on demand. The `↻` button
+(visible only after cards are dealt or the shoe is shuffled) lets the user trigger the request
+themselves and see the result update in real time. Hovering over the button shows a tooltip
+explaining this.
+
+The live suit-count strip above it (♠ ♥ ♣ ♦ with totals) auto-updates via WebSocket events —
+those two views together demonstrate both real-time push and on-demand REST in the same panel.
+
+---
+
 ## Architecture
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the full data model, API contract, role model, and

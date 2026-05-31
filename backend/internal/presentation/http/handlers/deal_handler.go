@@ -167,9 +167,14 @@ func (h *DealHandler) GetPlayerHand(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "player not found"})
 		return
 	}
+
+	// Hands are revealed to everyone once the game has finished.
+	g, _ := h.games.FindByID(p.GameID)
+	gameFinished := g != nil && g.Status == game.StatusFinished
+
 	isOwner := p.UserID.String() == claims.UserID
 	isAdmin := claims.Role == "admin"
-	if !isOwner && !isAdmin {
+	if !isOwner && !isAdmin && !gameFinished {
 		c.JSON(http.StatusForbidden, gin.H{"error": "you can only view your own hand"})
 		return
 	}
