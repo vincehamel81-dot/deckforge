@@ -4,6 +4,7 @@
   "noTables": "No open tables yet. Create one!",
   "loadingTables": "Loading tables...",
   "orphanWarning": "You have an active table ({{status}}) — return to it or delete it before joining another.",
+  "newTableBlockedTitle": "You already have an active table. Return to it or delete it first.",
   "return": "Return",
   "delete": "Delete",
   "joinTable": "Join Table",

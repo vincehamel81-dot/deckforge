@@ -80,7 +80,12 @@ export default function GamesPage() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <h2 style={{ color: '#7a9bb5', fontWeight: 400, margin: 0 }}>{t('lobby:openTables')}</h2>
-        <button style={{ ...s.btn, ...s.btnGold }} onClick={() => { createGame.reset(); setShowModal(true) }}>{t('lobby:newTable')}</button>
+        <button
+          disabled={!!myOrphanedTable}
+          title={myOrphanedTable ? t('lobby:newTableBlockedTitle') : undefined}
+          style={{ ...s.btn, ...s.btnGold, opacity: myOrphanedTable ? 0.4 : 1, cursor: myOrphanedTable ? 'not-allowed' : 'pointer' }}
+          onClick={() => { if (!myOrphanedTable) { createGame.reset(); setShowModal(true) } }}
+        >{t('lobby:newTable')}</button>
       </div>
 
       {isLoading && <p style={{ color: '#4a6a8a' }}>{t('lobby:loadingTables')}</p>}

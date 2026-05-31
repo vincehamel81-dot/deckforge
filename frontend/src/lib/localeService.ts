@@ -20,6 +20,10 @@ type NestedRecord = Record<string, unknown>
 
 const FALLBACK = 'en-US'
 const SESSION_PREFIX = 'i18n:'
+// In dev mode, Vite HMR can update JSON files without bumping the session key,
+// producing stale merged namespaces. Skip the cache entirely in development so
+// every page load uses freshly-merged locale data.
+const USE_SESSION_CACHE = !import.meta.env.DEV
 
 const SOURCE: Record<string, Record<string, NestedRecord>> = {
   'en-US': { common: enCommon, auth: enAuth, lobby: enLobby, table: enTable, errors: enErrors },
@@ -55,23 +59,27 @@ export function getMergedNamespace(locale: string, ns: string): NestedRecord {
   const mem = memoryCache.get(cacheKey)
   if (mem) return mem
 
-  try {
-    const stored = sessionStorage.getItem(SESSION_PREFIX + cacheKey)
-    if (stored) {
-      const parsed = JSON.parse(stored) as NestedRecord
-      memoryCache.set(cacheKey, parsed)
-      return parsed
-    }
-  } catch { /* sessionStorage unavailable in some environments */ }
+  if (USE_SESSION_CACHE) {
+    try {
+      const stored = sessionStorage.getItem(SESSION_PREFIX + cacheKey)
+      if (stored) {
+        const parsed = JSON.parse(stored) as NestedRecord
+        memoryCache.set(cacheKey, parsed)
+        return parsed
+      }
+    } catch { /* sessionStorage unavailable in some environments */ }
+  }
 
   const base = (SOURCE[FALLBACK]?.[ns] ?? {}) as NestedRecord
   const target = locale === FALLBACK ? {} : ((SOURCE[locale]?.[ns] ?? {}) as NestedRecord)
   const merged = deepMerge(base, target)
 
   memoryCache.set(cacheKey, merged)
-  try {
-    sessionStorage.setItem(SESSION_PREFIX + cacheKey, JSON.stringify(merged))
-  } catch { /* storage full or unavailable */ }
+  if (USE_SESSION_CACHE) {
+    try {
+      sessionStorage.setItem(SESSION_PREFIX + cacheKey, JSON.stringify(merged))
+    } catch { /* storage full or unavailable */ }
+  }
 
   return merged
 }

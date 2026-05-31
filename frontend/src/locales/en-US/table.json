@@ -9,10 +9,8 @@
   "loadingResults": "Loading results…",
   "shoe": {
     "title": "🃏 Shoe Status",
-    "checkShoe": "Check Shoe",
-    "refreshShoe": "↻ Refresh",
-    "hideShoe": "Hide",
-    "checking": "Checking…",
+    "refreshShoe": "↻",
+    "checking": "…",
     "total": "Total:",
     "remaining": "Remaining:",
     "drawsLeft": "Draws left:",

@@ -6,9 +6,7 @@
   "loadingResults": "Chargement des résultats…",
   "shoe": {
     "title": "🃏 État du Sabot",
-    "checkShoe": "Vérifier Sabot",
-    "hideShoe": "Masquer Sabot",
-    "checking": "Vérification…",
+    "checking": "…",
     "total": "Total :",
     "remaining": "Restant :",
     "drawsLeft": "Tirages restants :",

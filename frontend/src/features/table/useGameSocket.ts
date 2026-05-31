@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 
 const API_BASE = (import.meta.env.VITE_API_URL ?? 'http://localhost:8080')
-  .replace(/^http/, 'ws') // http://... → ws://..., https://... → wss://...
+  .replace(/^http/, 'ws')
 
 type GameEvent =
   | 'game_started'
@@ -16,6 +16,7 @@ interface UseGameSocketOptions {
   onGameDeleted?: () => void
   onKicked?: () => void
   onNotEnoughPlayers?: () => void
+  onShoeChanged?: () => void
   currentUserId?: string
 }
 
@@ -33,6 +34,11 @@ export function useGameSocket(gameId: string, options: UseGameSocketOptions = {}
 
     const ws = new WebSocket(`${API_BASE}/games/${gameId}/ws?token=${token}`)
 
+    ws.onerror = () => {
+      // WS errors (e.g. 404 on deleted game, network hiccup) are expected and
+      // handled via the game_ended event. Suppress browser console noise here.
+    }
+
     ws.onmessage = (e: MessageEvent) => {
       const { event, payload } = JSON.parse(e.data) as {
         event: GameEvent
@@ -41,12 +47,20 @@ export function useGameSocket(gameId: string, options: UseGameSocketOptions = {}
 
       switch (event) {
         case 'cards_dealt':
+          qc.invalidateQueries({ queryKey: ['leaderboard', gameId] })
+          qc.invalidateQueries({ queryKey: ['game', gameId] })
+          qc.invalidateQueries({ queryKey: ['suits', gameId] })
+          qc.invalidateQueries({ queryKey: ['cards', gameId] })
+          qc.refetchQueries({ queryKey: ['hand'] })
+          options.onShoeChanged?.()
+          break
         case 'shoe_shuffled':
           qc.invalidateQueries({ queryKey: ['leaderboard', gameId] })
           qc.invalidateQueries({ queryKey: ['game', gameId] })
           qc.invalidateQueries({ queryKey: ['suits', gameId] })
           qc.invalidateQueries({ queryKey: ['cards', gameId] })
           qc.refetchQueries({ queryKey: ['hand'] })
+          options.onShoeChanged?.()
           break
         case 'player_joined':
           qc.invalidateQueries({ queryKey: ['leaderboard', gameId] })
@@ -55,20 +69,20 @@ export function useGameSocket(gameId: string, options: UseGameSocketOptions = {}
         case 'player_left':
           qc.invalidateQueries({ queryKey: ['leaderboard', gameId] })
           qc.invalidateQueries({ queryKey: ['game', gameId] })
-          // If the event carries a userId and it matches the current user,
-          // they were kicked — show a message and redirect to lobby.
           if (payload?.userId && payload.userId === options.currentUserId) {
             options.onKicked?.()
           }
           break
         case 'game_ended':
+          // Always invalidate the lobby games list so stale orphan banners
+          // do not appear after a game is deleted or auto-ended.
+          qc.invalidateQueries({ queryKey: ['games'] })
           if (payload?.reason === 'deleted') {
             options.onGameDeleted?.()
           } else if (payload?.reason === 'not_enough_players') {
             options.onNotEnoughPlayers?.()
           } else {
             qc.invalidateQueries({ queryKey: ['game', gameId] })
-            qc.invalidateQueries({ queryKey: ['games'] })
           }
           break
         case 'game_started':
@@ -82,6 +96,14 @@ export function useGameSocket(gameId: string, options: UseGameSocketOptions = {}
       }
     }
 
-    return () => ws.close()
+    return () => {
+      // Guard against "WebSocket closed before connection established" warning
+      // that fires when the component unmounts before the handshake completes.
+      if (ws.readyState !== WebSocket.CONNECTING) {
+        ws.close()
+      } else {
+        ws.onopen = () => ws.close()
+      }
+    }
   }, [gameId, qc]) // options intentionally omitted — callback identity not stable
 }

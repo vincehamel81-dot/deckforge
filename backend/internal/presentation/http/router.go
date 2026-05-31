@@ -2,6 +2,7 @@ package http
 
 import (
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -58,22 +59,23 @@ func NewRouter(
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Debug routes — demonstrate zerolog structured logging.
-	// These endpoints are intentionally unauthenticated for evaluator convenience.
-	// In production, protect or remove these routes.
-	r.GET("/debug/error", func(c *gin.Context) {
-		log.Error().
-			Str("correlationId", middleware.CorrelationID(c)).
-			Str("component", "debug").
-			Msg("simulated application error — triggered via /debug/error")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "SIMULATED_SERVER_ERROR"})
-	})
-	r.GET("/debug/warn", func(c *gin.Context) {
-		log.Warn().
-			Str("correlationId", middleware.CorrelationID(c)).
-			Str("component", "debug").
-			Msg("simulated warning — triggered via /debug/warn")
-		c.JSON(http.StatusOK, gin.H{"status": "warning logged"})
-	})
+	// Only registered outside production so they are never reachable in a live deployment.
+	if os.Getenv("ENV") != "production" {
+		r.GET("/debug/error", func(c *gin.Context) {
+			log.Error().
+				Str("correlationId", middleware.CorrelationID(c)).
+				Str("component", "debug").
+				Msg("simulated application error — triggered via /debug/error")
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "SIMULATED_SERVER_ERROR"})
+		})
+		r.GET("/debug/warn", func(c *gin.Context) {
+			log.Warn().
+				Str("correlationId", middleware.CorrelationID(c)).
+				Str("component", "debug").
+				Msg("simulated warning — triggered via /debug/warn")
+			c.JSON(http.StatusOK, gin.H{"status": "warning logged"})
+		})
+	}
 
 	// Authenticated game routes
 	g := r.Group("/games", auth)

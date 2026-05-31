@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useRequireAuth } from '../../shared/hooks/useRequireAuth'
@@ -23,10 +23,15 @@ export default function TablePage() {
   const navigate = useNavigate()
 
   const [closedReason, setClosedReason] = useState<'deleted' | 'kicked' | 'not_enough_players' | null>(null)
+  const [shoeStale, setShoeStale] = useState(false)
+  const [shoeSnapshot, setShoeSnapshot] = useState<ReturnType<typeof useSuitCounts>['data']>(undefined)
+  const [isRefreshingSuits, setIsRefreshingSuits] = useState(false)
+
   useGameSocket(gameId!, {
     onGameDeleted: () => setClosedReason(r => r ?? 'deleted'),
     onKicked: () => setClosedReason(r => r ?? 'kicked'),
     onNotEnoughPlayers: () => setClosedReason(r => r ?? 'not_enough_players'),
+    onShoeChanged: () => setShoeStale(true),
     currentUserId: user?.id,
   })
 
@@ -35,11 +40,14 @@ export default function TablePage() {
   const myEntry = leaderboard?.find(e => e.userId === user?.id)
   const { data: hand } = usePlayerHand(gameId!, myEntry?.playerId)
   const { data: suitCounts, refetch: refetchSuits } = useSuitCounts(gameId!)
-  const [showShoeDetails, setShowShoeDetails] = useState(false)
-  const [isCheckingShoe, setIsCheckingShoe] = useState(false)
-  // Frozen snapshot from the last manual "Check Shoe" click — does NOT auto-update when cards are dealt.
-  const [shoeCheckData, setShoeCheckData] = useState<typeof suitCounts>(undefined)
   useCardCounts(gameId!) // kept for cache warm-up; data surfaced via shoe queries
+
+  // Populate the snapshot on first load without marking it as stale.
+  useEffect(() => {
+    if (suitCounts && !shoeSnapshot) {
+      setShoeSnapshot(suitCounts)
+    }
+  }, [suitCounts, shoeSnapshot])
 
   const startGame = useStartGame(gameId!)
   const endGame = useEndGame(gameId!)
@@ -153,10 +161,18 @@ export default function TablePage() {
     return map[suit] ?? suit
   }
 
+  const handleRefreshSuits = async () => {
+    setIsRefreshingSuits(true)
+    const result = await refetchSuits()
+    if (result.data) setShoeSnapshot(result.data)
+    setShoeStale(false)
+    setIsRefreshingSuits(false)
+  }
+
   return (
     <div style={{ minHeight: '100vh', background: '#0f1a2e', color: '#e2e8f0' }}>
 
-      {/* Sticky header — always visible so user can see who they are and log out */}
+      {/* Sticky header */}
       <div style={{
         position: 'sticky', top: 0, zIndex: 10,
         background: '#0f1a2e', borderBottom: '1px solid #1a2a40',
@@ -209,32 +225,7 @@ export default function TablePage() {
         <div>
           {/* Shoe status */}
           <div style={{ background: '#1a2a40', borderRadius: '12px', padding: '1rem', marginBottom: '1rem', border: '1px solid #2d4a6a' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-              <h3 style={{ color: '#e2c97e', margin: 0 }}>{t('table:shoe.title')}</h3>
-              <div style={{ display: 'flex', gap: '0.4rem' }}>
-                <button
-                  onClick={async () => {
-                    setIsCheckingShoe(true)
-                    const result = await refetchSuits()
-                    if (result.data) setShoeCheckData(result.data)
-                    setIsCheckingShoe(false)
-                    setShowShoeDetails(true)
-                  }}
-                  disabled={isCheckingShoe}
-                  style={{ padding: '0.2rem 0.6rem', background: 'transparent', border: '1px solid #4a6a8a', borderRadius: '4px', color: '#7a9bb5', cursor: isCheckingShoe ? 'default' : 'pointer', fontSize: '0.75rem' }}
-                >
-                  {isCheckingShoe ? t('table:shoe.checking') : showShoeDetails ? t('table:shoe.refreshShoe') : t('table:shoe.checkShoe')}
-                </button>
-                {showShoeDetails && (
-                  <button
-                    onClick={() => setShowShoeDetails(false)}
-                    style={{ padding: '0.2rem 0.5rem', background: 'transparent', border: '1px solid #4a6a8a', borderRadius: '4px', color: '#4a6a8a', cursor: 'pointer', fontSize: '0.75rem' }}
-                  >
-                    {t('table:shoe.hideShoe')}
-                  </button>
-                )}
-              </div>
-            </div>
+            <h3 style={{ color: '#e2c97e', margin: '0 0 0.75rem' }}>{t('table:shoe.title')}</h3>
             <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
               <div><span style={{ color: '#4a6a8a' }}>{t('table:shoe.total')} </span><strong>{totalCards}</strong></div>
               <div><span style={{ color: '#4a6a8a' }}>{t('table:shoe.remaining')} </span><strong style={{ color: remainingCards < 10 ? '#f87171' : '#4ade80' }}>{remainingCards}</strong></div>
@@ -242,7 +233,7 @@ export default function TablePage() {
               <div><span style={{ color: '#4a6a8a' }}>{t('table:shoe.decks')} </span><strong>{game.deckCount}</strong></div>
             </div>
             {suitCounts && (
-              <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
                 {suitCounts.map(s => (
                   <span key={s.suit} style={{ fontSize: '0.85rem' }}>
                     <span style={{ color: SUIT_COLOR[s.suit] ?? '#e2e8f0' }}>
@@ -253,19 +244,33 @@ export default function TablePage() {
                 ))}
               </div>
             )}
-            {showShoeDetails && shoeCheckData && (
-              <div style={{ marginTop: '0.75rem', borderTop: '1px solid #2d4a6a', paddingTop: '0.75rem' }}>
-                <p style={{ color: '#4a6a8a', fontSize: '0.75rem', margin: '0 0 0.5rem' }}>{t('table:shoe.undealtBySuit')}</p>
+            {/* Undealt per suit — always visible; refresh button appears when shoe state changed */}
+            <div style={{ borderTop: '1px solid #2d4a6a', paddingTop: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
+                <span style={{ color: '#4a6a8a', fontSize: '0.75rem' }}>{t('table:shoe.undealtBySuit')}</span>
+                {shoeStale && (
+                  <button
+                    onClick={handleRefreshSuits}
+                    disabled={isRefreshingSuits}
+                    style={{ padding: '0.1rem 0.4rem', background: 'transparent', border: '1px solid #4a6a8a', borderRadius: '3px', color: '#7a9bb5', cursor: isRefreshingSuits ? 'default' : 'pointer', fontSize: '0.7rem' }}
+                  >
+                    {isRefreshingSuits ? t('table:shoe.checking') : t('table:shoe.refreshShoe')}
+                  </button>
+                )}
+              </div>
+              {shoeSnapshot ? (
                 <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
-                  {shoeCheckData.map(s => (
+                  {shoeSnapshot.map(s => (
                     <span key={s.suit} style={{ fontSize: '0.85rem' }}>
                       <span style={{ color: SUIT_COLOR[s.suit] ?? '#e2e8f0' }}>{suitLabel(s.suit)}</span>
                       <span style={{ color: '#e2e8f0' }}>: <strong>{s.count}</strong></span>
                     </span>
                   ))}
                 </div>
-              </div>
-            )}
+              ) : (
+                <span style={{ color: '#4a6a8a', fontSize: '0.8rem' }}>…</span>
+              )}
+            </div>
           </div>
 
           {/* Warn when shoe can't serve a full round */}
