@@ -14,4 +14,4 @@ FROM nginx:alpine
 COPY --from=builder /app/dist /usr/share/nginx/html
 # Single-page app: all routes fall back to index.html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 80
+EXPOSE 8080
