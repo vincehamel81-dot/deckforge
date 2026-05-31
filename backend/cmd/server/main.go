@@ -28,13 +28,23 @@ import (
 
 func main() {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-	if os.Getenv("ENV") != "production" {
-		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
-	}
 
 	_ = godotenv.Load() // load .env if present; ignore error if not found
 
 	cfg := config.Load()
+
+	// Log level — change LOG_LEVEL env var and restart; no deploy needed.
+	if level, err := zerolog.ParseLevel(cfg.LogLevel); err == nil {
+		zerolog.SetGlobalLevel(level)
+	} else {
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	}
+
+	// Log format — "text" gives human-readable output for local dev;
+	// "json" is the default for production log aggregators (Railway, Datadog…).
+	if cfg.LogFormat == "text" {
+		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	}
 
 	if cfg.JWTSecret == "" {
 		log.Fatal().Msg("JWT_SECRET must be set")

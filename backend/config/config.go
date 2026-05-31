@@ -25,6 +25,13 @@ type Config struct {
 	// DebugToken, when non-empty, requires every /debug/* request to carry
 	// X-Debug-Token: <value>. Set via ops tooling (env var injection, not code).
 	DebugToken string
+	// LogLevel controls zerolog's global minimum level: debug, info, warn, error.
+	// Default is info. Set to debug in production temporarily to diagnose issues;
+	// no deploy required — change the env var and restart.
+	LogLevel string
+	// LogFormat controls output format: "json" for structured logs (production,
+	// log aggregators) or "text" for human-readable pretty-print (local dev).
+	LogFormat string
 }
 
 func Load() *Config {
@@ -43,6 +50,8 @@ func Load() *Config {
 		DisconnectTimeoutSeconds: getEnvInt("DISCONNECT_TIMEOUT_SECONDS", 30),
 		DebugEnabled:             getEnvBool("DEBUG_ENABLED", false),
 		DebugToken:               getEnv("DEBUG_TOKEN", ""),
+		LogLevel:                 getEnv("LOG_LEVEL", "info"),
+		LogFormat:                getEnv("LOG_FORMAT", "json"),
 	}
 }
 
