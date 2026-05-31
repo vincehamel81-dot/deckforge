@@ -5,7 +5,7 @@ import { useRequireAuth } from '../../shared/hooks/useRequireAuth'
 import { useAuthStore } from '../auth/authStore'
 import { useGames, useCreateGame, useJoinGame, useDeleteGame } from './useGames'
 import { LocaleSwitcher } from '../../shared/components/LocaleSwitcher'
-import { apiClient } from '../../lib/apiClient'
+import apiClient from '../../lib/apiClient'
 
 const s = {
   page: { minHeight: '100vh', background: '#0f1a2e', color: '#e2e8f0', padding: '2rem' },
