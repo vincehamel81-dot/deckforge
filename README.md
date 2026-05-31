@@ -273,18 +273,10 @@ GET    /games/:id/players/:pid/hand → player's hand (self or admin)
 
 ---
 
-## Roadmap
-
-Everything in the assignment spec is delivered. See [ROADMAP.md](ROADMAP.md) for what was
-shipped vs. what comes next (turn-based game mechanic, OIDC, Redis pub/sub, mobile layout).
-
----
-
 ## AI usage disclosure
 
 This project was developed with [Claude Code](https://claude.com/claude-code) (Anthropic) as an
-AI pair-programming assistant. GoTo listed AI-assisted development as a hiring criterion — I'm
-treating that as an invitation to be transparent, not something to hide.
+AI pair-programming assistant.
 
 **What the collaboration actually looked like:**
 
@@ -333,13 +325,23 @@ Specific decisions I initiated and drove:
 - Questioned `useState` vs `useMemo` for staleness detection — understood and validated the
   derived-state argument before accepting the approach.
 
-**What I didn't do:**
+**How I engaged with the generated code:**
 
-I didn't read every line of every generated file. I reviewed architecture, challenged key
-decisions, read the files that mattered (auth flow, WebSocket hub, game lifecycle, i18n cascade),
-ran the app, and tested behaviour in both local and production environments. Two days of focused
-work with an AI accelerator is still two days of focused work — it covers more ground, not less
-thinking.
+I covered roughly 60% of the codebase through structured review sessions rather than passive
+acceptance. The review process was iterative and bidirectional: reading a file or running the app
+typically generated 5–10 new follow-up requests — refactoring asks, bug reports, alternative
+approaches to challenge, or design questions that hadn't come up yet.
+
+Areas I read closely: the entire domain layer (game, shoe, player, user entities and their
+invariants), the auth middleware and JWT flow, the WebSocket hub and disconnect logic, the i18n
+cascade and cache strategy, the Clean Architecture wiring in `main.go`, and all test files. On the
+frontend: the auth store, the TanStack Query hooks, the WebSocket socket handler, and all components
+that handle real-time state.
+
+The review sessions surfaced most of the issues listed above. Reading the code also informed the
+architectural challenges — it's easier to question a decision when you can see exactly how it's
+implemented. Two days of focused work with an AI accelerator is still two days of focused work:
+it covers more ground, it doesn't replace the judgment.
 
 
 ---
