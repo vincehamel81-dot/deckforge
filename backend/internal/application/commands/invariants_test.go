@@ -110,13 +110,14 @@ func startedGame(t *testing.T, r repos) (*userdom.User, *gamedom.Game, []*player
 // --- invariant 1 + 2: 52 unique cards, 53rd deal blocked -------------------------
 
 // TestDeal_52UniqueThenAutoEnds verifies the assignment's core invariant:
-// shuffle followed by 52 single-card deals to one player yields all 52 unique
-// cards; the shoe is then exhausted, auto-end fires, and a 53rd deal is blocked.
+// shuffle followed by dealing all 52 cards yields each card exactly once;
+// the shoe is then exhausted, auto-end fires, and a further deal is blocked.
+//
+// Two players each receive 26 cards via DealRound so that removing a player
+// is not needed — avoiding the too-few-players auto-end added in fix b0a6e18.
 func TestDeal_52UniqueThenAutoEnds(t *testing.T) {
 	r := newRepos(t)
 	dealer, g, players := startedGame(t, r)
-	dealerPlayer := players[0]
-	p2 := players[1]
 
 	// Shuffle before dealing (as the assignment specifies)
 	if err := commands.ShuffleShoe(commands.ShuffleShoeCommand{
@@ -125,44 +126,40 @@ func TestDeal_52UniqueThenAutoEnds(t *testing.T) {
 		t.Fatalf("ShuffleShoe: %v", err)
 	}
 
-	// Remove p2 so the dealer is the sole active player and can receive all 52 cards.
-	if err := commands.RemovePlayer(commands.RemovePlayerCommand{
-		GameID: g.ID, PlayerID: p2.ID, RequesterUserID: p2.UserID,
-	}, r.games, r.players, r.shoes); err != nil {
-		t.Fatalf("RemovePlayer p2: %v", err)
-	}
-
-	// 52 single-card deals to the dealer
-	for i := 1; i <= 52; i++ {
-		res, err := commands.DealCards(commands.DealCardsCommand{
-			GameID: g.ID, DealerUserID: dealer.ID, PlayerID: dealerPlayer.ID, Count: 1,
+	// Deal rounds of 1 card to both players until the shoe is exhausted and
+	// auto-end fires. With 52 cards and 2 active players, this takes 26 rounds.
+	for round := 1; round <= 26; round++ {
+		res, err := commands.DealRound(commands.DealRoundCommand{
+			GameID: g.ID, DealerUserID: dealer.ID, Count: 1, AutoEnd: true,
 		}, r.games, r.shoes, r.players)
 		if err != nil {
-			t.Fatalf("deal #%d: %v", i, err)
+			t.Fatalf("DealRound #%d: %v", round, err)
 		}
-		if res.DealtCount != 1 {
-			t.Errorf("deal #%d: got DealtCount=%d, want 1", i, res.DealtCount)
+		if round < 26 && res.GameEnded {
+			t.Fatalf("game ended too early at round %d", round)
 		}
 	}
 
-	// Player must hold exactly 52 unique cards
-	hand, err := r.shoes.FindByPlayer(dealerPlayer.ID)
-	if err != nil {
-		t.Fatalf("FindByPlayer: %v", err)
-	}
-	if len(hand) != 52 {
-		t.Fatalf("expected 52 cards in hand, got %d", len(hand))
-	}
+	// Collect all cards from both players — must be exactly 52 unique cards.
 	seen := make(map[string]bool, 52)
-	for _, c := range hand {
-		key := fmt.Sprintf("%s:%s", c.Suit, c.Face)
-		if seen[key] {
-			t.Errorf("duplicate card in hand: %s", key)
+	for _, p := range players {
+		hand, err := r.shoes.FindByPlayer(p.ID)
+		if err != nil {
+			t.Fatalf("FindByPlayer: %v", err)
 		}
-		seen[key] = true
+		for _, c := range hand {
+			key := fmt.Sprintf("%s:%s", c.Suit, c.Face)
+			if seen[key] {
+				t.Errorf("duplicate card: %s", key)
+			}
+			seen[key] = true
+		}
+	}
+	if len(seen) != 52 {
+		t.Errorf("expected 52 unique cards across both hands, got %d", len(seen))
 	}
 
-	// Shoe must be empty and never negative
+	// Shoe must be empty and never negative.
 	remaining, _ := r.shoes.UndealtCount(g.ID)
 	if remaining != 0 {
 		t.Errorf("expected 0 remaining after 52 deals, got %d", remaining)
@@ -171,18 +168,18 @@ func TestDeal_52UniqueThenAutoEnds(t *testing.T) {
 		t.Errorf("remainingCards went negative: %d", remaining)
 	}
 
-	// 53rd deal must be blocked (game auto-ended when shoe was exhausted)
-	_, err = commands.DealCards(commands.DealCardsCommand{
-		GameID: g.ID, DealerUserID: dealer.ID, PlayerID: dealerPlayer.ID, Count: 1,
-	}, r.games, r.shoes, r.players)
-	if err == nil {
-		t.Error("expected error on 53rd deal after shoe exhausted, got nil")
+	// Game must be FINISHED (auto-end fired when remaining==0 < activePlayerCount==2).
+	final, _ := r.games.FindByID(g.ID)
+	if final.Status != gamedom.StatusFinished {
+		t.Errorf("expected FINISHED after shoe exhaustion, got %s", final.Status)
 	}
 
-	// Player hand must still be exactly 52 (no phantom 53rd card)
-	hand2, _ := r.shoes.FindByPlayer(dealerPlayer.ID)
-	if len(hand2) != 52 {
-		t.Errorf("after blocked 53rd deal player should hold 52 cards, got %d", len(hand2))
+	// Any further deal must be blocked because the game is FINISHED.
+	_, err := commands.DealRound(commands.DealRoundCommand{
+		GameID: g.ID, DealerUserID: dealer.ID, Count: 1, AutoEnd: true,
+	}, r.games, r.shoes, r.players)
+	if err == nil {
+		t.Error("expected error dealing to a FINISHED game, got nil")
 	}
 }
 
@@ -205,7 +202,7 @@ func TestRemovePlayer_ReturnsCardsToShoe(t *testing.T) {
 
 	remainingBefore, _ := r.shoes.UndealtCount(g.ID)
 
-	if err := commands.RemovePlayer(commands.RemovePlayerCommand{
+	if _, err := commands.RemovePlayer(commands.RemovePlayerCommand{
 		GameID: g.ID, PlayerID: p2.ID, RequesterUserID: p2.UserID,
 	}, r.games, r.players, r.shoes); err != nil {
 		t.Fatalf("RemovePlayer: %v", err)
@@ -241,7 +238,7 @@ func TestAutoEnd_LessThan_NotLessOrEqual(t *testing.T) {
 	// because remaining(2) == activeCount(2), not less than.
 	for _, p := range players {
 		res, err := commands.DealCards(commands.DealCardsCommand{
-			GameID: g.ID, DealerUserID: dealer.ID, PlayerID: p.ID, Count: 25,
+			GameID: g.ID, DealerUserID: dealer.ID, PlayerID: p.ID, Count: 25, AutoEnd: true,
 		}, r.games, r.shoes, r.players)
 		if err != nil {
 			t.Fatalf("deal 25: %v", err)
@@ -262,7 +259,7 @@ func TestAutoEnd_LessThan_NotLessOrEqual(t *testing.T) {
 
 	// Deal 1 more card: remaining becomes 1 < 2 active players → auto-end fires
 	res, err := commands.DealCards(commands.DealCardsCommand{
-		GameID: g.ID, DealerUserID: dealer.ID, PlayerID: players[0].ID, Count: 1,
+		GameID: g.ID, DealerUserID: dealer.ID, PlayerID: players[0].ID, Count: 1, AutoEnd: true,
 	}, r.games, r.shoes, r.players)
 	if err != nil {
 		t.Fatalf("deal 1 (trigger auto-end): %v", err)
@@ -334,16 +331,13 @@ func TestFinished_RejectsMutations(t *testing.T) {
 // --- invariant 6: leaderboard sort ------------------------------------------
 
 // TestLeaderboard_SortedDescending verifies that players are ranked by hand
-// value descending. Without shuffling, NewDeck inserts cards in ascending value
-// order (A♥=1, 2♥=2, …), so the second player's cards (positions 3-5) are
-// worth more than the first player's (positions 0-2).
+// value descending. StartGame auto-shuffles the shoe (assumption A-011), so
+// we only check ordering — not specific point totals.
 func TestLeaderboard_SortedDescending(t *testing.T) {
 	r := newRepos(t)
 	dealer, g, players := startedGame(t, r)
 
-	// No shuffle: positions dealt in order.
-	// Player 0 (seat 0) → A♥(1) + 2♥(2) + 3♥(3) = 6 pts
-	// Player 1 (seat 1) → 4♥(4) + 5♥(5) + 6♥(6) = 15 pts
+	// Deal 3 cards to each player (shoe is pre-shuffled by StartGame).
 	for _, p := range players {
 		if _, err := commands.DealCards(commands.DealCardsCommand{
 			GameID: g.ID, DealerUserID: dealer.ID, PlayerID: p.ID, Count: 3,
@@ -359,13 +353,9 @@ func TestLeaderboard_SortedDescending(t *testing.T) {
 	if len(board) != 2 {
 		t.Fatalf("expected 2 entries, got %d", len(board))
 	}
+	// Invariant: strictly non-increasing hand values.
 	if board[0].HandValue < board[1].HandValue {
 		t.Errorf("leaderboard not sorted descending: [0]=%d pts, [1]=%d pts",
-			board[0].HandValue, board[1].HandValue)
-	}
-	// Player 1 (higher-value cards) should be first
-	if board[0].HandValue != 15 || board[1].HandValue != 6 {
-		t.Errorf("unexpected values: got [%d, %d], want [15, 6]",
 			board[0].HandValue, board[1].HandValue)
 	}
 }
