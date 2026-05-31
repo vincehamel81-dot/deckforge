@@ -3,6 +3,7 @@ package ws
 import (
 	"encoding/json"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -25,15 +26,31 @@ type Message struct {
 	Payload interface{} `json:"payload,omitempty"`
 }
 
+// DisconnectHandler is called after a player's WebSocket connection has been
+// closed for longer than the configured disconnect timeout with no reconnect.
+// gameID and userID are string UUIDs.
+type DisconnectHandler func(gameID, userID string)
+
 // Hub manages WebSocket clients grouped by game ID.
 // One Hub instance is shared across the entire server lifetime.
 type Hub struct {
-	mu      sync.RWMutex
-	clients map[string]map[*Client]struct{} // gameID → connected clients
+	mu                 sync.RWMutex
+	clients            map[string]map[*Client]struct{} // gameID → connected clients
+	pendingDisconnects map[string]*time.Timer           // gameID:userID → timer
+	disconnectTimeout  time.Duration
+	onDisconnect       DisconnectHandler
 }
 
-func NewHub() *Hub {
-	return &Hub{clients: make(map[string]map[*Client]struct{})}
+// NewHub creates a Hub. If disconnectTimeout > 0 and onDisconnect is non-nil,
+// players whose WS connection closes are auto-removed after the timeout unless
+// they reconnect first.
+func NewHub(disconnectTimeout time.Duration, onDisconnect DisconnectHandler) *Hub {
+	return &Hub{
+		clients:            make(map[string]map[*Client]struct{}),
+		pendingDisconnects: make(map[string]*time.Timer),
+		disconnectTimeout:  disconnectTimeout,
+		onDisconnect:       onDisconnect,
+	}
 }
 
 func (h *Hub) register(c *Client) {
@@ -43,6 +60,15 @@ func (h *Hub) register(c *Client) {
 		h.clients[c.gameID] = make(map[*Client]struct{})
 	}
 	h.clients[c.gameID][c] = struct{}{}
+
+	// Cancel any pending disconnect timer — the player reconnected in time.
+	if c.userID != "" {
+		key := c.gameID + ":" + c.userID
+		if t, ok := h.pendingDisconnects[key]; ok {
+			t.Stop()
+			delete(h.pendingDisconnects, key)
+		}
+	}
 }
 
 func (h *Hub) deregister(c *Client) {
@@ -55,6 +81,30 @@ func (h *Hub) deregister(c *Client) {
 		}
 	}
 	close(c.send)
+
+	if c.userID == "" || h.onDisconnect == nil || h.disconnectTimeout == 0 {
+		return
+	}
+
+	// If another tab/window for the same player is still connected, skip the timer.
+	for client := range h.clients[c.gameID] {
+		if client.userID == c.userID {
+			return
+		}
+	}
+
+	// Start the disconnect grace period.
+	key := c.gameID + ":" + c.userID
+	if t, ok := h.pendingDisconnects[key]; ok {
+		t.Stop() // shouldn't exist, but be safe
+	}
+	gameID, userID := c.gameID, c.userID
+	h.pendingDisconnects[key] = time.AfterFunc(h.disconnectTimeout, func() {
+		h.mu.Lock()
+		delete(h.pendingDisconnects, key)
+		h.mu.Unlock()
+		h.onDisconnect(gameID, userID)
+	})
 }
 
 // Broadcast sends a message to every client connected to the given game.
@@ -79,12 +129,13 @@ func (h *Hub) Broadcast(gameID string, msg Message) {
 type Client struct {
 	hub    *Hub
 	gameID string
+	userID string // from JWT — used to correlate with the player record on disconnect
 	conn   *websocket.Conn
 	send   chan []byte
 }
 
-func NewClient(hub *Hub, gameID string, conn *websocket.Conn) *Client {
-	return &Client{hub: hub, gameID: gameID, conn: conn, send: make(chan []byte, 32)}
+func NewClient(hub *Hub, gameID, userID string, conn *websocket.Conn) *Client {
+	return &Client{hub: hub, gameID: gameID, userID: userID, conn: conn, send: make(chan []byte, 32)}
 }
 
 // Serve registers the client with the hub and starts its read/write pumps.

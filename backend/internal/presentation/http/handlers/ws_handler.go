@@ -40,7 +40,8 @@ func NewWSHandler(hub *ws.Hub, games game.Repository, jwtSecret string) *WSHandl
 func (h *WSHandler) ServeWS(c *gin.Context) {
 	// JWT from query param — WebSocket API cannot set headers.
 	token := c.Query("token")
-	if _, err := jwtpkg.Validate(token, h.jwtSecret); err != nil {
+	claims, err := jwtpkg.Validate(token, h.jwtSecret)
+	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
@@ -62,6 +63,6 @@ func (h *WSHandler) ServeWS(c *gin.Context) {
 		return
 	}
 
-	client := ws.NewClient(h.hub, gameID.String(), conn)
+	client := ws.NewClient(h.hub, gameID.String(), claims.UserID, conn)
 	go client.Serve()
 }

@@ -17,7 +17,8 @@ type Config struct {
 	MaxPlayers         int
 	MaxUsernameLength  int
 	AdminSeedUsernames []string
-	AutoEndGame        bool
+	AutoEndGame              bool
+	DisconnectTimeoutSeconds int
 }
 
 func Load() *Config {
@@ -32,7 +33,8 @@ func Load() *Config {
 		MaxPlayers:         getEnvInt("MAX_PLAYERS", 8),
 		MaxUsernameLength:  getEnvInt("MAX_USERNAME_LENGTH", 15),
 		AdminSeedUsernames: parseCSV(getEnv("ADMIN_SEED_USERNAMES", "")),
-		AutoEndGame:        getEnvBool("AUTO_END_GAME", true),
+		AutoEndGame:              getEnvBool("AUTO_END_GAME", true),
+		DisconnectTimeoutSeconds: getEnvInt("DISCONNECT_TIMEOUT_SECONDS", 30),
 	}
 }
 

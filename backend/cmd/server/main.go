@@ -12,11 +12,14 @@ package main
 
 import (
 	"os"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/vincehamel81-dot/deckforge/config"
+	"github.com/vincehamel81-dot/deckforge/internal/application/commands"
 	"github.com/vincehamel81-dot/deckforge/internal/domain/user"
 	"github.com/vincehamel81-dot/deckforge/internal/infrastructure/persistence"
 	ws "github.com/vincehamel81-dot/deckforge/internal/infrastructure/ws"
@@ -63,7 +66,58 @@ func main() {
 		}
 	}
 
-	hub := ws.NewHub()
+	// Hub is declared first so the disconnect callback can close over it.
+	// The callback fires only after DISCONNECT_TIMEOUT_SECONDS (≥30s), well
+	// after hub is assigned below.
+	var hub *ws.Hub
+
+	disconnectTimeout := time.Duration(cfg.DisconnectTimeoutSeconds) * time.Second
+	onDisconnect := func(gameID, userID string) {
+		gid, err := uuid.Parse(gameID)
+		if err != nil {
+			return
+		}
+		uid, err := uuid.Parse(userID)
+		if err != nil {
+			return
+		}
+
+		p, err := players.FindByUserAndGame(uid, gid)
+		if err != nil || p == nil || !p.IsActive() {
+			return // player already left or game gone
+		}
+
+		gameEnded, err := commands.RemovePlayer(commands.RemovePlayerCommand{
+			GameID:          gid,
+			PlayerID:        p.ID,
+			RequesterUserID: uid,
+			IsAdmin:         false,
+		}, games, players, shoes)
+		if err != nil {
+			log.Warn().Str("gameId", gameID).Str("userId", userID).Err(err).
+				Msg("disconnect auto-remove failed")
+			return
+		}
+
+		log.Info().
+			Str("gameId", gameID).
+			Str("userId", userID).
+			Int("timeoutSeconds", cfg.DisconnectTimeoutSeconds).
+			Msg("player auto-removed after WS disconnect timeout")
+
+		hub.Broadcast(gameID, ws.Message{
+			Event:   ws.EventPlayerLeft,
+			Payload: map[string]interface{}{"userId": userID},
+		})
+		if gameEnded {
+			hub.Broadcast(gameID, ws.Message{
+				Event:   ws.EventGameEnded,
+				Payload: map[string]interface{}{"reason": "not_enough_players"},
+			})
+		}
+	}
+
+	hub = ws.NewHub(disconnectTimeout, onDisconnect)
 	router := httpserver.NewRouter(cfg, games, players, shoes, users, hub)
 
 	log.Info().Str("port", cfg.Port).Msg("DeckForge listening")
