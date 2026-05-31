@@ -99,7 +99,7 @@ has its own Dockerfile (Nginx) for containerised deployment — used in producti
 | Database | SQLite (embedded) | SQLite or PostgreSQL (`--profile postgres`) | SQLite / PostgreSQL add-on |
 | API base URL | `http://localhost:8080` | `http://localhost:8080` | `https://content-optimism-production-bdb5.up.railway.app` |
 | Auth | JWT (dev secret) | JWT (dev secret) | JWT → OIDC (Entra ID, production path) |
-| Logs | ConsoleWriter (colored terminal) | Container stdout | JSON (zerolog, `ENV=production`) |
+| Logs | ConsoleWriter colored text (`LOG_FORMAT=text`) | Container stdout | JSON (`LOG_FORMAT=json`) |
 
 **Frontend per-environment:** `VITE_API_URL` in a `.env` file. Vite resolves in order:
 `.env.local` → `.env.development` / `.env.production` → `.env`. For production builds the URL
@@ -124,13 +124,43 @@ is inlined into the bundle at `npm run build` time — set it before building.
 | `ADMIN_SEED_USERNAMES` | *(empty)* | Comma-separated list of usernames to seed as admins on first boot (e.g. `admin,ops`) |
 | `AUTO_END_GAME` | `true` | When `true`, game ends automatically when shoe cannot serve a full round or player count drops below minimum |
 | `DISCONNECT_TIMEOUT_SECONDS` | `30` | Grace period before a player with a closed WebSocket is auto-removed from the game |
-| `ENV` | `development` | Set to `production` for JSON logs |
+| `LOG_LEVEL` | `info` | Minimum log severity: `debug` `info` `warn` `error`. Change + restart — no deploy needed |
+| `LOG_FORMAT` | `json` | `text` for coloured terminal (local dev); `json` for log aggregators (production) |
+| `DEBUG_ENABLED` | `false` | Registers `/debug/error` and `/debug/warn` diagnostic endpoints |
+| `DEBUG_TOKEN` | *(empty)* | When set, all `/debug/*` requests require `X-Debug-Token: <value>` header |
 
 ### Frontend (`frontend/.env`)
 
 | Variable | Default | Description |
 |---|---|---|
 | `VITE_API_URL` | `http://localhost:8080` | Backend API base URL |
+
+---
+
+## Observability
+
+Structured JSON logging is built in from the first request. Every log entry carries a
+`correlationId` that ties together all log lines for a single HTTP request — the same
+pattern as `Operation.Id` in Azure Application Insights or a trace ID in OpenTelemetry.
+
+The local dev `.env` defaults enable two diagnostic endpoints to verify the logging
+pipeline is working end-to-end without waiting for a real error:
+
+```bash
+# With the backend running locally (DEBUG_ENABLED=true is set in .env by default):
+
+GET http://localhost:8080/debug/error   # triggers log.Error() with correlation ID
+GET http://localhost:8080/debug/warn    # triggers log.Warn() with correlation ID
+```
+
+Terminal output (with `LOG_FORMAT=text`):
+```
+ERR simulated application error — triggered via /debug/error component=debug correlationId=b3d1a...
+```
+
+The same entry in production (`LOG_FORMAT=json`) becomes a structured record that any
+log aggregator (Datadog, Loki, Railway) can index, alert on, and correlate with the
+HTTP access log entry from the request that triggered it.
 
 ---
 
