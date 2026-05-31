@@ -9,15 +9,18 @@ import (
 )
 
 var (
-	ErrInvalidDeckCount  = errors.New("deck count must be between 1 and 8")
-	ErrInvalidPlayerRange = errors.New("min players must be ≥ 2 and ≤ max players")
-	ErrMaxPlayersExceeded = errors.New("game is at maximum player capacity")
-	ErrGameNotFound      = errors.New("game not found")
-	ErrForbidden         = errors.New("you do not have permission to perform this action")
-	ErrPlayerNotFound    = errors.New("player not found")
-	ErrAlreadyInGame     = errors.New("you are already in an active game")
-	ErrNotEnoughPlayers  = errors.New("not enough players to start the game")
-	ErrShoeEmpty         = errors.New("shoe has no cards — add decks before starting")
+	ErrInvalidDeckCount      = errors.New("deck count must be between 1 and 8")
+	ErrInvalidPlayerRange    = errors.New("min players must be ≥ 2 and ≤ max players")
+	ErrMaxPlayersExceeded    = errors.New("game is at maximum player capacity")
+	ErrGameNotFound          = errors.New("game not found")
+	ErrForbidden             = errors.New("you do not have permission to perform this action")
+	ErrPlayerNotFound        = errors.New("player not found")
+	ErrAlreadyInGame         = errors.New("you are already in an active game")
+	ErrNotEnoughPlayers      = errors.New("not enough players to start the game")
+	ErrShoeEmpty             = errors.New("shoe has no cards — add decks before starting")
+	// ErrNotEnoughCardsToJoin is returned when joining an IN_PROGRESS game whose shoe
+	// cannot deal a full catch-up hand to the new player (remaining < min hand size of peers).
+	ErrNotEnoughCardsToJoin  = errors.New("SHOE_TOO_LOW_FOR_JOIN")
 )
 
 type CreateGameCommand struct {

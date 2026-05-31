@@ -42,34 +42,49 @@ func AddPlayer(cmd AddPlayerCommand, games game.Repository, players player.Repos
 		return nil, ErrMaxPlayersExceeded
 	}
 
+	// Pre-validate shoe capacity before committing the join.
+	// If the shoe cannot deal a full catch-up hand the join is rejected — a player
+	// who joins with fewer cards than their opponents has no fair path to win.
+	if g.Status == game.StatusInProgress {
+		existingActive, err := players.FindActiveByGame(cmd.GameID)
+		if err != nil {
+			return nil, err
+		}
+		needed := minHandSize(existingActive, shoes)
+		if needed > 0 {
+			remaining, err := shoes.UndealtCount(cmd.GameID)
+			if err != nil {
+				return nil, err
+			}
+			if remaining < needed {
+				return nil, ErrNotEnoughCardsToJoin
+			}
+		}
+	}
+
 	p := player.New(cmd.GameID, cmd.UserID, activeCount)
 	if err := players.Create(p); err != nil {
 		return nil, err
 	}
 
-	// Catch-up deal: if game is in progress, deal current hand size to new player.
+	// Catch-up deal: deal the minimum hand size to the new player so all active
+	// players hold the same number of cards entering their first turn.
 	if g.Status == game.StatusInProgress {
 		activePlayers, err := players.FindActiveByGame(cmd.GameID)
 		if err != nil {
 			return nil, err
 		}
-		// Current hand size = minimum cards any existing active player holds.
 		handSize := catchUpHandSize(activePlayers, p.ID, shoes)
 		if handSize > 0 {
 			undealt, err := shoes.FindUndealtByGame(cmd.GameID)
 			if err != nil {
 				return nil, err
 			}
-			toDeal := handSize
-			if toDeal > len(undealt) {
-				toDeal = len(undealt)
-			}
-			for i := 0; i < toDeal; i++ {
+			for i := 0; i < handSize && i < len(undealt); i++ {
 				if err := shoes.DealCard(undealt[i].ID, p.ID); err != nil {
 					return nil, err
 				}
 			}
-			// Check auto-end after catch-up.
 			if _, err := checkAutoEnd(cmd.GameID, games, shoes, players); err != nil {
 				return nil, err
 			}
@@ -77,6 +92,25 @@ func AddPlayer(cmd AddPlayerCommand, games game.Repository, players player.Repos
 	}
 
 	return p, nil
+}
+
+// minHandSize returns the minimum hand size among all provided players.
+// Used to pre-validate shoe capacity before a player joins.
+func minHandSize(activePlayers []*player.Player, shoes shoe.Repository) int {
+	min := -1
+	for _, p := range activePlayers {
+		hand, err := shoes.FindByPlayer(p.ID)
+		if err != nil {
+			continue
+		}
+		if min == -1 || len(hand) < min {
+			min = len(hand)
+		}
+	}
+	if min == -1 {
+		return 0
+	}
+	return min
 }
 
 // catchUpHandSize returns the minimum hand size among all active players except the newcomer.

@@ -13,6 +13,7 @@ export interface Game {
   createdAt: string
   playerCount: number
   dealerUsername: string
+  remainingCards: number
 }
 
 export function useGames() {

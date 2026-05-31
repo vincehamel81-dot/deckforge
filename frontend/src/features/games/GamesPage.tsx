@@ -30,7 +30,7 @@ function statusColor(status: string) {
 
 export default function GamesPage() {
   const authed = useRequireAuth()
-  const { t } = useTranslation(['common', 'lobby', 'table'])
+  const { t } = useTranslation(['common', 'lobby', 'table', 'errors'])
   const user = useAuthStore((s) => s.user)
   const logout = useAuthStore((s) => s.logout)
   const navigate = useNavigate()
@@ -40,6 +40,14 @@ export default function GamesPage() {
   const deleteGame = useDeleteGame()
   const isAdmin = user?.role === 'admin'
   const [showModal, setShowModal] = useState(false)
+  const [joinErrorGameId, setJoinErrorGameId] = useState<string | null>(null)
+
+  const handleJoin = (gameId: string) => {
+    setJoinErrorGameId(null)
+    joinGame.mutate(gameId, {
+      onError: () => setJoinErrorGameId(gameId),
+    })
+  }
 
   const openGames = games?.filter(g => g.status !== 'FINISHED') ?? []
 
@@ -61,7 +69,7 @@ export default function GamesPage() {
 
       {myOrphanedTable && (
         <div style={{ background: '#1a2a1a', border: '1px solid #4ade8088', borderRadius: '10px', padding: '1rem 1.25rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
-          <span style={{ color: '#4ade80' }}>⚠ {t('lobby:orphanWarning', { status: myOrphanedTable.status })}</span>
+          <span style={{ color: '#4ade80' }}>⚠ {t('lobby:orphanWarning', { status: t(`table:status.${myOrphanedTable.status}`) })}</span>
           <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
             <button style={{ ...s.btn, ...s.btnGold }} onClick={() => navigate(`/table/${myOrphanedTable.id}`)}>{t('lobby:return')}</button>
             <button style={{ ...s.btn, padding: '0.5rem 0.9rem', background: 'transparent', color: '#f87171', border: '1px solid #f87171' }} onClick={() => deleteGame.mutate(myOrphanedTable.id)}>{t('lobby:delete')}</button>
@@ -93,14 +101,27 @@ export default function GamesPage() {
               <div>🃏 {t('lobby:decks', { count: game.deckCount, total: game.deckCount * 52 })}</div>
               <div>👥 {t('lobby:players', { current: game.playerCount, max: game.maxPlayers })}</div>
             </div>
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-              <button
-                disabled={!!myOrphanedTable}
-                style={{ ...s.btn, ...s.btnGold, flex: 1, opacity: myOrphanedTable ? 0.4 : 1, cursor: myOrphanedTable ? 'not-allowed' : 'pointer' }}
-                onClick={() => !myOrphanedTable && joinGame.mutate(game.id)}
-              >
-                {t('lobby:joinTable')}
-              </button>
+            {joinErrorGameId === game.id && (
+              <p style={{ color: '#f87171', fontSize: '0.8rem', margin: '0.5rem 0 0' }}>
+                {t(`errors:${(joinGame.error as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'UNKNOWN'}`,
+                  { defaultValue: t('errors:UNKNOWN') })}
+              </p>
+            )}
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+              {(() => {
+                const shoeTooLow = game.status === 'IN_PROGRESS' && game.remainingCards === 0
+                const disabled = !!myOrphanedTable || shoeTooLow
+                return (
+                  <button
+                    disabled={disabled}
+                    title={shoeTooLow ? t('errors:SHOE_TOO_LOW_FOR_JOIN') : undefined}
+                    style={{ ...s.btn, ...s.btnGold, flex: 1, opacity: disabled ? 0.4 : 1, cursor: disabled ? 'not-allowed' : 'pointer' }}
+                    onClick={() => !disabled && handleJoin(game.id)}
+                  >
+                    {t('lobby:joinTable')}
+                  </button>
+                )
+              })()}
               {isAdmin && (
                 <button
                   style={{ ...s.btn, background: 'transparent', color: '#f87171', border: '1px solid #f87171', padding: '0.5rem 0.75rem' }}

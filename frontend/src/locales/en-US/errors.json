@@ -7,5 +7,6 @@
   "GAME_ALREADY_STARTED": "This game has already started.",
   "GAME_ALREADY_FINISHED": "This game has already ended.",
   "UNAUTHORIZED": "You don't have permission to do that.",
+  "SHOE_TOO_LOW_FOR_JOIN": "Not enough cards left in this table for you to join.",
   "UNKNOWN": "Something went wrong. Please try again."
 }

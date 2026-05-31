@@ -89,7 +89,7 @@ func (h *GameHandler) ListGames(c *gin.Context) {
 		s := game.Status(statusStr)
 		filter = &s
 	}
-	summaries, err := queries.ListGames(filter, h.games, h.players, h.users)
+	summaries, err := queries.ListGames(filter, h.games, h.players, h.shoes, h.users)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 		return

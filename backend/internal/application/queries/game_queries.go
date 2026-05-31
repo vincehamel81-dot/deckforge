@@ -8,17 +8,21 @@ import (
 	"github.com/vincehamel81-dot/deckforge/internal/domain/user"
 )
 
+
 type GameDetail struct {
 	Game           *game.Game
 	TotalCards     int
 	RemainingCards int
 }
 
-// GameSummary enriches a Game with player count and dealer username for the lobby list.
+// GameSummary enriches a Game with player count, dealer username, and remaining shoe
+// cards for the lobby list. RemainingCards allows the frontend to gate the join button
+// without an extra API call.
 type GameSummary struct {
 	*game.Game
 	PlayerCount    int    `json:"playerCount"`
 	DealerUsername string `json:"dealerUsername"`
+	RemainingCards int    `json:"remainingCards"`
 }
 
 func GetGame(id uuid.UUID, games game.Repository, shoes shoe.Repository) (*GameDetail, error) {
@@ -40,7 +44,7 @@ func GetGame(id uuid.UUID, games game.Repository, shoes shoe.Repository) (*GameD
 	}, nil
 }
 
-func ListGames(statusFilter *game.Status, games game.Repository, players player.Repository, users user.Repository) ([]*GameSummary, error) {
+func ListGames(statusFilter *game.Status, games game.Repository, players player.Repository, shoes shoe.Repository, users user.Repository) ([]*GameSummary, error) {
 	gamesList, err := games.FindAll(statusFilter)
 	if err != nil {
 		return nil, err
@@ -48,6 +52,10 @@ func ListGames(statusFilter *game.Status, games game.Repository, players player.
 	summaries := make([]*GameSummary, 0, len(gamesList))
 	for _, g := range gamesList {
 		count, err := players.CountActive(g.ID)
+		if err != nil {
+			return nil, err
+		}
+		remaining, err := shoes.UndealtCount(g.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -63,6 +71,7 @@ func ListGames(statusFilter *game.Status, games game.Repository, players player.
 			Game:           g,
 			PlayerCount:    count,
 			DealerUsername: dealerUsername,
+			RemainingCards: remaining,
 		})
 	}
 	return summaries, nil

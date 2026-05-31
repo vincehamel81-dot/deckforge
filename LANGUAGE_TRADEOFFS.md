@@ -71,8 +71,5 @@ This document preserves the full analysis for interview reference.
    than a 200 MB JVM image for a product that will run at scale.
 4. **Domain simplicity.** The card game logic (shuffle, deal, score) is pure functions — no ORM
    complexity, no Spring magic needed. Go's simplicity shines here.
-5. **Interview signal.** "I chose Go because it aligns with GoTo's real-time infrastructure
-   and because goroutines make the WebSocket layer trivially correct" is a stronger answer
-   than "I used what I know."
-
+   
 *Decision made: 2026-05-29. Go chosen.*

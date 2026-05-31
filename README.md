@@ -250,8 +250,6 @@ AI pair-programming assistant.
 - Design of the Draw/Accept game mechanic (Phase 2)
 - All commit messages and documentation
 
-**Why this is on-brand for GoTo:** The job description explicitly lists AI-assisted development
-as a hiring criterion. This project demonstrates that approach in practice.
 
 ---
 
