@@ -765,6 +765,115 @@ two independent key namespaces on one cluster (`i18n:*` for locale merges, `ws:*
 
 ---
 
+## ADR-025: Observability strategy — structured logs, runtime log level, gated debug endpoints
+
+**Status:** Accepted  
+**Date:** 2026-05-31
+
+**Context:**  
+The assignment does not specify observability requirements, but GoTo's production environment
+demands that any service can be diagnosed without a code change or redeployment. Two failure
+modes to avoid: (1) a hardcoded log level that forces a deploy to get more detail, and (2) debug
+tooling that is either always exposed or never accessible in production.
+
+**Decision:** Three independent, composable levers — all driven by env vars, none requiring a
+code change or redeployment to toggle.
+
+### Lever 1 — `LOG_LEVEL` (verbosity)
+
+Controls zerolog's global minimum severity. Values: `debug | info | warn | error`. Default: `info`.
+
+```
+LOG_LEVEL=debug   # show all log statements including debug-level tracing
+LOG_LEVEL=info    # normal production — only meaningful events
+LOG_LEVEL=warn    # high-traffic service under load — reduce noise
+LOG_LEVEL=error   # absolute minimum — only failures
+```
+
+Standard 12-factor pattern. Change the env var in Railway / Kubernetes / Azure App Settings
+and restart — no deploy, no PR. This is how every mature Go, Node, and .NET service handles
+it (zerolog, Pino, Serilog all expose the same knob).
+
+**Important:** `LOG_LEVEL` controls which zerolog statements are emitted. It does not enable
+any HTTP endpoints. Statements using `log.Debug()` are silenced at `info` and above; they
+exist in code but produce no output until the level is lowered.
+
+### Lever 2 — `LOG_FORMAT` (output format)
+
+Controls output encoding. Values: `json | text`. Default: `json`.
+
+```
+LOG_FORMAT=json   # structured JSON — required for log aggregators (Datadog, Loki, Railway)
+LOG_FORMAT=text   # coloured human-readable pretty-print — local dev only
+```
+
+`json` is the only format that log aggregators can parse and index for alerting and search.
+`text` (zerolog's `ConsoleWriter`) is a dev convenience that breaks aggregator ingestion.
+Replaced the previous `os.Getenv("ENV") != "production"` check, which was a fragile string
+comparison that failed silently if the env var was misnamed.
+
+**In .NET terms:** this is the equivalent of `WriteTo.Console()` vs `WriteTo.File()` in
+Serilog, or `AddConsole()` vs `AddJsonConsole()` in Microsoft.Extensions.Logging.
+
+### Lever 3 — `DEBUG_ENABLED` + `DEBUG_TOKEN` (diagnostic endpoints)
+
+Registers `/debug/error` and `/debug/warn` HTTP routes. Default: disabled.
+
+```
+DEBUG_ENABLED=true    # register /debug/* routes
+DEBUG_TOKEN=<secret>  # require X-Debug-Token: <secret> header on every request
+```
+
+These endpoints trigger known `log.Error()` / `log.Warn()` calls with a correlation ID, letting
+ops verify that the logging pipeline is working end-to-end in production without waiting for a
+real error. They are **not** controlled by `LOG_LEVEL` — they always emit at their respective
+level (error/warn) regardless of the configured minimum. A `LOG_LEVEL=error` deployment with
+`DEBUG_ENABLED=true` will still produce output from `/debug/warn`... but only for `error`-level
+routes since warn would be suppressed. Set `LOG_LEVEL=debug` alongside `DEBUG_ENABLED=true` for
+maximum visibility during a diagnostic session.
+
+### Combined production debugging workflow
+
+```bash
+# 1. Set in Railway env vars (no deploy — restart only):
+LOG_LEVEL=debug
+DEBUG_ENABLED=true
+DEBUG_TOKEN=s3cr3t
+LOG_FORMAT=json         # keep JSON so Railway's log viewer can parse it
+
+# 2. Trigger a test log entry from curl or Thunder Client:
+curl https://app.railway.app/debug/error \
+  -H "X-Debug-Token: s3cr3t"
+
+# 3. Railway log panel shows:
+# {"level":"error","correlationId":"abc-123","component":"debug","time":1748700000,
+#  "message":"simulated application error — triggered via /debug/error"}
+
+# 4. When done, revert:
+LOG_LEVEL=info
+DEBUG_ENABLED=false
+```
+
+**Tradeoffs accepted:**
+- `LOG_LEVEL=debug` in production can increase log volume significantly if the codebase has
+  many `log.Debug()` calls. Currently it has none — all statements use `info`, `warn`, or
+  `error`. This is intentional: debug statements are added temporarily during investigation
+  and removed before merging. The level mechanism is in place for when they're needed.
+- Debug endpoints require a service restart to enable/disable (env var change). An alternative
+  (HTTP endpoint to flip the log level at runtime without restart) was considered but rejected
+  for this scope — it requires a mutex on the global logger and adds attack surface.
+
+**Phase 2 — error tracking (Sentry / Datadog):**  
+The three levers above are operational tools. For always-on production error visibility without
+manual intervention, the next step is an error tracking SDK (Sentry, Datadog APM, or Azure
+Application Insights). These capture unhandled panics, stack traces, affected user counts, and
+error rates automatically — no endpoint to hit, no log to search. In Go, Sentry integrates with
+Gin via `sentrygin` middleware in a single line. The correlation ID already stamped on every
+request maps directly to Sentry's `transaction_id`, enabling a request trace from the HTTP log
+entry to the Sentry error event.
+
+---
+
 ## Assumptions log
 
 Decisions where the assignment was silent and we applied "principle of least surprise":
