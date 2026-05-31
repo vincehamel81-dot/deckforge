@@ -252,6 +252,7 @@ export default function TablePage() {
                     onClick={handleRefreshSuits}
                     disabled={isRefreshingSuits}
                     title={t('table:shoe.refreshShoeTitle')}
+                    data-tooltip={t('table:shoe.refreshShoeTitle')}
                     style={{ padding: '0.1rem 0.4rem', background: 'transparent', border: '1px solid #4a6a8a', borderRadius: '3px', color: '#7a9bb5', cursor: isRefreshingSuits ? 'default' : 'pointer', fontSize: '0.7rem' }}
                   >
                     {isRefreshingSuits ? t('table:shoe.checking') : t('table:shoe.refreshShoe')}

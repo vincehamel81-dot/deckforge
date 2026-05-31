@@ -92,6 +92,7 @@ export function useGameSocket(gameId: string, options: UseGameSocketOptions = {}
           qc.invalidateQueries({ queryKey: ['suits', gameId] })
           qc.invalidateQueries({ queryKey: ['cards', gameId] })
           qc.refetchQueries({ queryKey: ['hand'] })
+          options.onShoeChanged?.() // initial deal changes the shoe; mark snapshot stale
           break
       }
     }
