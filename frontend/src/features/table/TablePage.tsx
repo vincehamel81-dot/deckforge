@@ -174,7 +174,6 @@ export default function TablePage() {
     setIsRefreshingSuits(true)
     const result = await refetchSuits()
     if (result.data) setShoeSnapshot(result.data)
-    setShoeStale(false)
     setIsRefreshingSuits(false)
   }
 
